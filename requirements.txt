@@ -1,0 +1,17 @@
+fastapi
+uvicorn[standard]
+firebase-admin
+redis
+python-dotenv
+pydantic
+pydantic-settings
+email-validator
+requests
+stripe
+razorpay
+boto3
+# AI
+google-genai
+twilio
+elevenlabs
+python-multipart

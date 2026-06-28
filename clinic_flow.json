@@ -1,0 +1,305 @@
+{
+    "version": "7.3",
+    "data_api_version": "3.0",
+    "routing_model": {
+        "DOCTOR_SELECTION": ["DATE_TIME_SELECTION"],
+        "DATE_TIME_SELECTION": ["PATIENT_DETAILS"],
+        "PATIENT_DETAILS": ["SUMMARY"],
+        "SUMMARY": []
+    },
+    "screens": [
+        {
+            "id": "DOCTOR_SELECTION",
+            "title": "Select Specialization",
+            "data": {
+                "specialties": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "id": { "type": "string" },
+                            "title": { "type": "string" }
+                        }
+                    },
+                    "__example__": []
+                },
+                "doctors": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "id": { "type": "string" },
+                            "title": { "type": "string" }
+                        }
+                    },
+                    "__example__": []
+                },
+                "is_doctor_enabled": {
+                    "type": "boolean",
+                    "__example__": false
+                },
+                "patient_name_prefill": { "type": "string", "__example__": "" },
+                "patient_phone_prefill": { "type": "string", "__example__": "" }
+            },
+            "layout": {
+                "type": "SingleColumnLayout",
+                "children": [
+                    {
+                        "type": "Form",
+                        "name": "doctor_form",
+                        "children": [
+                            {
+                                "type": "Dropdown",
+                                "label": "Medical Specialty",
+                                "name": "specialty",
+                                "data-source": "${data.specialties}",
+                                "required": true,
+                                "on-select-action": {
+                                    "name": "data_exchange",
+                                    "payload": {
+                                        "trigger": "specialty_selected",
+                                        "specialty": "${form.specialty}"
+                                    }
+                                }
+                            },
+                            {
+                                "type": "Dropdown",
+                                "label": "Available Doctors",
+                                "name": "doctor",
+                                "data-source": "${data.doctors}",
+                                "required": true,
+                                "enabled": "${data.is_doctor_enabled}"
+                            },
+                            {
+                                "type": "Footer",
+                                "label": "Next",
+                                "on-click-action": {
+                                    "name": "data_exchange",
+                                    "payload": {
+                                        "trigger": "doctor_selected_continue",
+                                        "specialty": "${form.specialty}",
+                                        "doctor": "${form.doctor}"
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                ]
+            }
+        },
+        {
+            "id": "DATE_TIME_SELECTION",
+            "title": "Date & Time",
+            "data": {
+                "dates": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "id": { "type": "string" },
+                            "title": { "type": "string" }
+                        }
+                    },
+                    "__example__": []
+                },
+                "times": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "id": { "type": "string" },
+                            "title": { "type": "string" }
+                        }
+                    },
+                    "__example__": []
+                },
+                "is_time_enabled": {
+                    "type": "boolean",
+                    "__example__": false
+                },
+                "specialty": { "type": "string", "__example__": "" },
+                "doctor": { "type": "string", "__example__": "" },
+                "patient_name_prefill": { "type": "string", "__example__": "" },
+                "patient_phone_prefill": { "type": "string", "__example__": "" }
+            },
+            "layout": {
+                "type": "SingleColumnLayout",
+                "children": [
+                    {
+                        "type": "Form",
+                        "name": "datetime_form",
+                        "children": [
+                            {
+                                "type": "Dropdown",
+                                "label": "Select Date",
+                                "name": "date",
+                                "data-source": "${data.dates}",
+                                "required": true,
+                                "on-select-action": {
+                                    "name": "data_exchange",
+                                    "payload": {
+                                        "trigger": "date_selected",
+                                        "specialty": "${data.specialty}",
+                                        "doctor": "${data.doctor}",
+                                        "date": "${form.date}"
+                                    }
+                                }
+                            },
+                            {
+                                "type": "Dropdown",
+                                "label": "Select Time",
+                                "name": "time",
+                                "data-source": "${data.times}",
+                                "required": true,
+                                "enabled": "${data.is_time_enabled}"
+                            },
+                            {
+                                "type": "Footer",
+                                "label": "Continue",
+                                "on-click-action": {
+                                    "name": "navigate",
+                                    "next": {
+                                        "type": "screen",
+                                        "name": "PATIENT_DETAILS"
+                                    },
+                                    "payload": {
+                                        "specialty": "${data.specialty}",
+                                        "doctor": "${data.doctor}",
+                                        "date": "${form.date}",
+                                        "time": "${form.time}",
+                                        "patient_name_prefill": "${data.patient_name_prefill}",
+                                        "patient_phone_prefill": "${data.patient_phone_prefill}"
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                ]
+            }
+        },
+        {
+            "id": "PATIENT_DETAILS",
+            "title": "Patient Details",
+            "data": {
+                "specialty": { "type": "string", "__example__": "" },
+                "doctor": { "type": "string", "__example__": "" },
+                "date": { "type": "string", "__example__": "" },
+                "time": { "type": "string", "__example__": "" },
+                "patient_name_prefill": { "type": "string", "__example__": "" },
+                "patient_phone_prefill": { "type": "string", "__example__": "" }
+            },
+            "layout": {
+                "type": "SingleColumnLayout",
+                "children": [
+                    {
+                        "type": "Form",
+                        "name": "patient_form",
+                        "init-values": {
+                            "name": "${data.patient_name_prefill}",
+                            "phone": "${data.patient_phone_prefill}"
+                        },
+                        "children": [
+                            {
+                                "type": "TextInput",
+                                "label": "Full Name",
+                                "name": "name",
+                                "required": true
+                            },
+                            {
+                                "type": "TextInput",
+                                "label": "Phone Number",
+                                "name": "phone",
+                                "input-type": "phone",
+                                "required": true
+                            },
+                            {
+                                "type": "TextInput",
+                                "label": "Email Address",
+                                "name": "email",
+                                "input-type": "email",
+                                "required": false
+                            },
+                            {
+                                "type": "TextArea",
+                                "label": "Symptoms / Reason for visit",
+                                "name": "symptoms",
+                                "required": true
+                            },
+                            {
+                                "type": "Footer",
+                                "label": "Review Appointment",
+                                "on-click-action": {
+                                    "name": "data_exchange",
+                                    "payload": {
+                                        "trigger": "patient_details_submit",
+                                        "specialty": "${data.specialty}",
+                                        "doctor": "${data.doctor}",
+                                        "date": "${data.date}",
+                                        "time": "${data.time}",
+                                        "name": "${form.name}",
+                                        "phone": "${form.phone}",
+                                        "email": "${form.email}",
+                                        "symptoms": "${form.symptoms}"
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                ]
+            }
+        },
+        {
+            "id": "SUMMARY",
+            "title": "Confirm Appointment",
+            "terminal": true,
+            "data": {
+                "summary_text": { "type": "string", "__example__": "" },
+                "specialty": { "type": "string", "__example__": "" },
+                "doctor": { "type": "string", "__example__": "" },
+                "date": { "type": "string", "__example__": "" },
+                "time": { "type": "string", "__example__": "" },
+                "name": { "type": "string", "__example__": "" },
+                "phone": { "type": "string", "__example__": "" },
+                "email": { "type": "string", "__example__": "" },
+                "symptoms": { "type": "string", "__example__": "" }
+            },
+            "layout": {
+                "type": "SingleColumnLayout",
+                "children": [
+                    {
+                        "type": "Form",
+                        "name": "summary_form",
+                        "children": [
+                            {
+                                "type": "TextHeading",
+                                "text": "Appointment Summary"
+                            },
+                            {
+                                "type": "TextBody",
+                                "text": "${data.summary_text}"
+                            },
+                            {
+                                "type": "Footer",
+                                "label": "Confirm & Book",
+                                "on-click-action": {
+                                    "name": "data_exchange",
+                                    "payload": {
+                                        "trigger": "final_confirm",
+                                        "specialty": "${data.specialty}",
+                                        "doctor": "${data.doctor}",
+                                        "date": "${data.date}",
+                                        "time": "${data.time}",
+                                        "name": "${data.name}",
+                                        "phone": "${data.phone}",
+                                        "email": "${data.email}",
+                                        "symptoms": "${data.symptoms}"
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                ]
+            }
+        }
+    ]
+}
