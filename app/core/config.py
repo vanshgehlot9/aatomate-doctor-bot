@@ -7,6 +7,7 @@ class Settings(BaseSettings):
     
     # Firebase
     FIREBASE_CREDENTIALS_PATH: Optional[str] = None
+    FIREBASE_CREDENTIALS_JSON: Optional[str] = None
     
     # Redis
     REDIS_HOST: str = "localhost"

@@ -7,7 +7,12 @@ logger = logging.getLogger(__name__)
 
 # Initialize Firebase App
 try:
-    if settings.FIREBASE_CREDENTIALS_PATH:
+    if settings.FIREBASE_CREDENTIALS_JSON:
+        import json
+        cred_dict = json.loads(settings.FIREBASE_CREDENTIALS_JSON)
+        cred = credentials.Certificate(cred_dict)
+        firebase_admin.initialize_app(cred)
+    elif settings.FIREBASE_CREDENTIALS_PATH:
         cred = credentials.Certificate(settings.FIREBASE_CREDENTIALS_PATH)
         firebase_admin.initialize_app(cred)
     else:
