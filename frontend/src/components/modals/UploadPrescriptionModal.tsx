@@ -42,7 +42,7 @@ export function UploadPrescriptionModal({ appointmentId, patientId, doctorId, ex
   patientId: string;
   doctorId: string;
   existingPrescriptionId?: string;
-  trigger?: React.ReactNode;
+  trigger?: React.ReactElement;
 }) {
   const [open, setOpen] = useState(false);
   const [file, setFile] = useState<File | null>(null);

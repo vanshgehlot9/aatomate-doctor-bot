@@ -12,7 +12,7 @@ import { Loader2, FileText, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-export function WriteNoteModal({ patients, appointments, trigger }: { patients: any[], appointments: any[], trigger?: React.ReactNode }) {
+export function WriteNoteModal({ patients, appointments, trigger }: { patients: any[], appointments: any[], trigger?: React.ReactElement }) {
   const [open, setOpen] = useState(false);
   const { userProfile } = useAuth();
   const queryClient = useQueryClient();
@@ -65,7 +65,7 @@ export function WriteNoteModal({ patients, appointments, trigger }: { patients: 
           <div className="space-y-2">
             <Label>Select Appointment (Today)</Label>
             <Select value={appointmentId} onValueChange={(v) => {
-              setAppointmentId(v);
+              setAppointmentId(v || "");
               const appt = appointments.find(a => a.id === v);
               if (appt?.notes) setNote(appt.notes);
               else setNote("");

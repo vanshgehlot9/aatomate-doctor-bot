@@ -12,7 +12,7 @@ import { Loader2, Calendar, Clock, User as UserIcon } from "lucide-react";
 import { toast } from "sonner";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-export function BookAppointmentModal({ trigger }: { trigger?: React.ReactNode }) {
+export function BookAppointmentModal({ trigger }: { trigger?: React.ReactElement }) {
   const [open, setOpen] = useState(false);
   const { userProfile } = useAuth();
   const queryClient = useQueryClient();

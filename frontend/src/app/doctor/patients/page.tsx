@@ -390,7 +390,7 @@ export default function DoctorPatientsPage() {
                             {/* Reusing UploadPrescriptionModal logic seamlessly as an icon button */}
                             <UploadPrescriptionModal 
                               patientId={patient.id} 
-                              doctorId={userProfile?.id || ""}
+                              doctorId={userProfile?.uid || ""}
                               trigger={
                                 <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full text-slate-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-slate-800" title="Prescription">
                                   <Pill className="w-4 h-4" />
