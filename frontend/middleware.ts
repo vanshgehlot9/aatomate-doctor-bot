@@ -1,14 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 
 const SESSION_MAP = [
-  { prefix: "/vendor", cookie: "vendor_session", login: "/vendor/login" },
-  { prefix: "/business", cookie: "business_session", login: "/business/login" },
-  { prefix: "/staff", cookie: "staff_session", login: "/staff/login" },
-  { prefix: "/super-admin", cookie: "super_admin_session", login: "/super-admin/login" },
-  { prefix: "/admin", cookie: "super_admin_session", login: "/super-admin/login" },
+  { prefix: "/vendor", cookie: "vendor_session", login: "/login" },
+  { prefix: "/business", cookie: "business_session", login: "/login" },
+  { prefix: "/staff", cookie: "staff_session", login: "/login" },
+  { prefix: "/super-admin", cookie: "super_admin_session", login: "/login" },
+  { prefix: "/admin", cookie: "super_admin_session", login: "/login" },
+  { prefix: "/doctor", cookie: "doctor_session", login: "/login" },
 ];
 
-const ALL_COOKIES = ["vendor_session", "business_session", "staff_session", "super_admin_session"];
+const ALL_COOKIES = ["vendor_session", "business_session", "staff_session", "super_admin_session", "doctor_session"];
 
 function clearCookies(response: NextResponse) {
   for (const cookieName of ALL_COOKIES) {
@@ -38,5 +39,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/vendor/:path*", "/business/:path*", "/staff/:path*", "/super-admin/:path*", "/admin/:path*"],
+  matcher: ["/vendor/:path*", "/business/:path*", "/staff/:path*", "/super-admin/:path*", "/admin/:path*", "/doctor/:path*"],
 };
