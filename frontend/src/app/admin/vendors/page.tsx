@@ -198,7 +198,7 @@ export default function VendorsPage() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: deleteVendor,
+    mutationFn: (id: string) => deleteVendor(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["vendors"] });
       toast.success("Vendor removed successfully");
