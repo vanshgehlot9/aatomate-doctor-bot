@@ -37,11 +37,12 @@ const uploadPrescription = async (formData: FormData) => {
   return res.json();
 };
 
-export function UploadPrescriptionModal({ appointmentId, patientId, doctorId, existingPrescriptionId }: { 
+export function UploadPrescriptionModal({ appointmentId, patientId, doctorId, existingPrescriptionId, trigger }: { 
   appointmentId?: string;
   patientId: string;
   doctorId: string;
   existingPrescriptionId?: string;
+  trigger?: React.ReactNode;
 }) {
   const [open, setOpen] = useState(false);
   const [file, setFile] = useState<File | null>(null);
@@ -95,16 +96,14 @@ export function UploadPrescriptionModal({ appointmentId, patientId, doctorId, ex
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger
-        render={
+      <DialogTrigger render={
+        trigger || (
           <Button variant="outline" size="sm" className="gap-2">
             <UploadCloud className="w-4 h-4" />
             Upload
           </Button>
-        }
-      >
-        <FileText className="w-4 h-4" />
-      </DialogTrigger>
+        )
+      } />
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>Upload Prescription</DialogTitle>

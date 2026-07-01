@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { SidebarContent } from "./DynamicSidebar";
+import { SidebarContent, MobileSidebarContent } from "./DynamicSidebar";
 import { UserProfile } from "@/lib/rbac";
 import { auth } from "@/lib/firebase";
 import { signOut } from "firebase/auth";
@@ -39,8 +39,8 @@ export function Topbar({ userProfile }: { userProfile: UserProfile }) {
           <SheetTrigger className="md:hidden p-2 -ml-2 text-muted-foreground hover:bg-muted rounded-md cursor-pointer">
             <Menu className="w-5 h-5" />
           </SheetTrigger>
-          <SheetContent side="left" className="p-0 w-64 border-r-0">
-            <SidebarContent userProfile={userProfile} onNavigate={() => setMobileMenuOpen(false)} />
+          <SheetContent side="left" className="p-0 w-[85vw] sm:max-w-[400px] border-r-0">
+            <MobileSidebarContent userProfile={userProfile} onNavigate={() => setMobileMenuOpen(false)} />
           </SheetContent>
         </Sheet>
         

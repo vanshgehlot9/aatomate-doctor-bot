@@ -12,7 +12,7 @@ import { Loader2, Calendar, Clock, User as UserIcon } from "lucide-react";
 import { toast } from "sonner";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-export function BookAppointmentModal() {
+export function BookAppointmentModal({ trigger }: { trigger?: React.ReactNode }) {
   const [open, setOpen] = useState(false);
   const { userProfile } = useAuth();
   const queryClient = useQueryClient();
@@ -92,11 +92,13 @@ export function BookAppointmentModal() {
     }}>
       <DialogTrigger 
         render={
-          <Button className="gap-2 bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm" />
-        }
-      >
-        <Calendar className="w-4 h-4" /> Book Appointment
-      </DialogTrigger>
+          trigger || (
+            <Button className="gap-2 bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm">
+              <Calendar className="w-4 h-4" /> Book Appointment
+            </Button>
+          )
+        } 
+      />
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle>Book New Appointment</DialogTitle>
