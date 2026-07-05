@@ -52,11 +52,26 @@ def _load_key(path: str):
 
 def _build_keyring() -> List[Tuple[Any, str]]:
     ring: List[Tuple[Any, str]] = []
-    if os.path.exists(PRIVATE_KEY_PATH):
+    
+    # Check Environment Variable (for Render/production)
+    env_key = os.environ.get("WHATSAPP_PRIVATE_KEY")
+    if env_key:
+        try:
+            # Handle newline formatting issues if pasted directly into env variables
+            env_key_formatted = env_key.replace("\\n", "\n")
+            k = load_pem_private_key(env_key_formatted.encode('utf-8'), password=None)
+            ring.append((k, _fp(k)))
+            logger.info(f"[crypto] Loaded current key from WHATSAPP_PRIVATE_KEY fp={ring[-1][1]}")
+        except Exception as e:
+            logger.error(f"[crypto] Failed to load key from environment variable: {e}")
+            
+    # Fallback to local file if not found in env
+    if not ring and os.path.exists(PRIVATE_KEY_PATH):
         k = _load_key(PRIVATE_KEY_PATH)
         if k:
             ring.append((k, _fp(k)))
             logger.info(f"[crypto] Loaded current key fp={ring[-1][1]}")
+            
     if os.path.isdir(KEY_ARCHIVE_DIR):
         for path in sorted(glob.glob(os.path.join(KEY_ARCHIVE_DIR, "private_*.pem")), reverse=True):
             if len(ring) >= MAX_KEYS:
