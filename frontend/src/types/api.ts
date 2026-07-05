@@ -7,6 +7,10 @@ export interface Tenant {
   address: string | null;
   whatsapp_number_id: string | null;
   is_active: boolean;
+  clinic_address?: string;
+  latitude?: number;
+  longitude?: number;
+  room_floor?: string;
   created_at: string;
   updated_at: string;
 }

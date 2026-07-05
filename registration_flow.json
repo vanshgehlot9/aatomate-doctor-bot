@@ -1,0 +1,193 @@
+{
+    "version": "7.3",
+    "data_api_version": "3.0",
+    "routing_model": {
+        "PATIENT_REGISTRATION": ["REGISTRATION_SUMMARY"],
+        "REGISTRATION_SUMMARY": []
+    },
+    "screens": [
+        {
+            "id": "PATIENT_REGISTRATION",
+            "title": "New Patient Registration",
+            "data": {
+                "patient_name_prefill": { "type": "string", "__example__": "" },
+                "patient_phone_prefill": { "type": "string", "__example__": "" }
+            },
+            "layout": {
+                "type": "SingleColumnLayout",
+                "children": [
+                    {
+                        "type": "Form",
+                        "name": "registration_form",
+                        "init-values": {
+                            "name": "${data.patient_name_prefill}",
+                            "phone": "${data.patient_phone_prefill}",
+                            "country": "India"
+                        },
+                        "children": [
+                            {
+                                "type": "TextInput",
+                                "label": "Full Name",
+                                "name": "name",
+                                "required": true
+                            },
+                            {
+                                "type": "Dropdown",
+                                "label": "Gender",
+                                "name": "gender",
+                                "required": true,
+                                "data-source": [
+                                    {"id": "male", "title": "Male"},
+                                    {"id": "female", "title": "Female"},
+                                    {"id": "other", "title": "Other"}
+                                ]
+                            },
+                            {
+                                "type": "DatePicker",
+                                "label": "Date of Birth",
+                                "name": "dob",
+                                "required": true
+                            },
+                            {
+                                "type": "TextInput",
+                                "label": "Email (optional)",
+                                "name": "email",
+                                "input-type": "email",
+                                "required": false
+                            },
+                            {
+                                "type": "TextInput",
+                                "label": "Phone Number",
+                                "name": "phone",
+                                "input-type": "phone",
+                                "required": true
+                            },
+                            {
+                                "type": "TextInput",
+                                "label": "Country",
+                                "name": "country",
+                                "required": true,
+                                "enabled": false
+                            },
+                            {
+                                "type": "TextInput",
+                                "label": "State",
+                                "name": "state",
+                                "required": true
+                            },
+                            {
+                                "type": "TextInput",
+                                "label": "City",
+                                "name": "city",
+                                "required": true
+                            },
+                            {
+                                "type": "TextArea",
+                                "label": "Address",
+                                "name": "address",
+                                "required": true
+                            },
+                            {
+                                "type": "TextInput",
+                                "label": "PIN Code",
+                                "name": "pin",
+                                "input-type": "number",
+                                "required": true
+                            },
+                            {
+                                "type": "TextInput",
+                                "label": "Emergency Contact",
+                                "name": "emergency_contact",
+                                "input-type": "phone",
+                                "required": true
+                            },
+                            {
+                                "type": "TextInput",
+                                "label": "Insurance Details (optional)",
+                                "name": "insurance",
+                                "required": false
+                            },
+                            {
+                                "type": "TextInput",
+                                "label": "Aadhaar Number (optional)",
+                                "name": "aadhaar",
+                                "input-type": "number",
+                                "required": false
+                            },
+                            {
+                                "type": "Footer",
+                                "label": "Review Details",
+                                "on-click-action": {
+                                    "name": "data_exchange",
+                                    "payload": {
+                                        "trigger": "registration_review",
+                                        "name": "${form.name}",
+                                        "gender": "${form.gender}",
+                                        "dob": "${form.dob}",
+                                        "email": "${form.email}",
+                                        "phone": "${form.phone}",
+                                        "country": "${form.country}",
+                                        "state": "${form.state}",
+                                        "city": "${form.city}",
+                                        "address": "${form.address}",
+                                        "pin": "${form.pin}",
+                                        "emergency_contact": "${form.emergency_contact}",
+                                        "insurance": "${form.insurance}",
+                                        "aadhaar": "${form.aadhaar}"
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                ]
+            }
+        },
+        {
+            "id": "REGISTRATION_SUMMARY",
+            "title": "Confirm Registration",
+            "terminal": true,
+            "data": {
+                "summary_text": { "type": "string", "__example__": "" },
+                "name": { "type": "string", "__example__": "John Doe" },
+                "phone": { "type": "string", "__example__": "1234567890" },
+                "email": { "type": "string", "__example__": "john@example.com" },
+                "gender": { "type": "string", "__example__": "male" },
+                "dob": { "type": "string", "__example__": "1990-01-01" }
+            },
+            "layout": {
+                "type": "SingleColumnLayout",
+                "children": [
+                    {
+                        "type": "Form",
+                        "name": "summary_form",
+                        "children": [
+                            {
+                                "type": "TextHeading",
+                                "text": "Registration Summary"
+                            },
+                            {
+                                "type": "TextBody",
+                                "text": "${data.summary_text}"
+                            },
+                            {
+                                "type": "Footer",
+                                "label": "Confirm & Register",
+                                "on-click-action": {
+                                    "name": "data_exchange",
+                                    "payload": {
+                                        "trigger": "final_registration",
+                                        "name": "${data.name}",
+                                        "phone": "${data.phone}",
+                                        "email": "${data.email}",
+                                        "gender": "${data.gender}",
+                                        "dob": "${data.dob}"
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                ]
+            }
+        }
+    ]
+}

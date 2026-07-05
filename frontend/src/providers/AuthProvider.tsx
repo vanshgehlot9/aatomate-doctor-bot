@@ -1,9 +1,8 @@
 "use client";
 
 import React, { createContext, useContext, useEffect, useState } from "react";
-import { onAuthStateChanged, User } from "firebase/auth";
-import { doc, getDoc } from "firebase/firestore";
-import { auth, db } from "@/lib/firebase";
+import { User, Session } from "@supabase/supabase-js";
+import { supabase } from "@/lib/supabase";
 import { UserProfile, Role } from "@/lib/rbac";
 
 interface AuthContextType {
@@ -26,17 +25,46 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      setUser(firebaseUser);
-      if (firebaseUser) {
+    let mounted = true;
+
+    async function getInitialSession() {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (mounted) {
+          await handleSession(session);
+        }
+      } catch (error) {
+        console.error("Error fetching session:", error);
+      } finally {
+        if (mounted) {
+          setLoading(false);
+        }
+      }
+    }
+
+    async function handleSession(session: Session | null) {
+      if (session?.user) {
+        setUser(session.user);
         try {
-          const userDoc = await getDoc(doc(db, "users", firebaseUser.uid));
-          if (userDoc.exists()) {
-            const profile = userDoc.data() as UserProfile;
+          const { data, error } = await supabase
+            .from("users")
+            .select("*")
+            .eq("id", session.user.id)
+            .single();
+
+          if (data && !error) {
+            const profile: UserProfile = {
+                uid: data.id,
+                email: data.email,
+                name: data.name,
+                role: data.role as Role,
+                tenantId: data.tenant_id,
+                hospitalId: data.tenant_id
+            };
             setUserProfile(profile);
             localStorage.setItem("tenantId", profile.tenantId);
           } else {
-            console.error("User profile not found in Firestore");
+            console.error("User profile not found in Supabase", error);
             localStorage.removeItem("tenantId");
           }
         } catch (error) {
@@ -44,13 +72,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           localStorage.removeItem("tenantId");
         }
       } else {
+        setUser(null);
         setUserProfile(null);
         localStorage.removeItem("tenantId");
       }
-      setLoading(false);
-    });
+    }
 
-    return () => unsubscribe();
+    getInitialSession();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (_event, session) => {
+        if (mounted) {
+          handleSession(session);
+        }
+      }
+    );
+
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   return (

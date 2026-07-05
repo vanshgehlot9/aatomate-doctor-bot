@@ -5,9 +5,9 @@ class Settings(BaseSettings):
     PROJECT_NAME: str = "Healthcare AI Operating System"
     API_V1_STR: str = "/api/v1"
     
-    # Firebase
-    FIREBASE_CREDENTIALS_PATH: Optional[str] = None
-    FIREBASE_CREDENTIALS_JSON: Optional[str] = None
+    # Supabase
+    SUPABASE_URL: str = ""
+    SUPABASE_KEY: str = ""
     
     # Redis
     REDIS_HOST: str = "localhost"

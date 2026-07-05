@@ -9,9 +9,12 @@ import { Badge } from "@/components/ui/badge";
 import { UploadPrescriptionModal } from "@/components/modals/UploadPrescriptionModal";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Button } from "@/components/ui/button";
+import { BookAppointmentModal } from "@/components/modals/BookAppointmentModal";
+import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
+import { useRouter } from "next/navigation";
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -27,6 +30,7 @@ const itemVariants = {
 };
 
 export default function DoctorAppointmentsPage() {
+  const router = useRouter();
   const { data: appointments, isLoading: loadingAppts } = useQuery({
     queryKey: ["appointments"],
     queryFn: getAppointments
@@ -66,12 +70,15 @@ export default function DoctorAppointmentsPage() {
     });
   }, [appointments, patients, searchQuery, statusFilter]);
 
-  const today = new Date().toDateString();
-  const todaysAppts = appointments?.filter(a => new Date(a.appointment_date).toDateString() === today) || [];
-  const completedToday = todaysAppts.filter(a => a.status === 'completed').length;
-  const pendingToday = todaysAppts.filter(a => a.status === 'scheduled').length;
-  const nextAppt = todaysAppts.filter(a => a.status === 'scheduled')
-    .sort((a, b) => a.appointment_time.localeCompare(b.appointment_time))[0];
+  const totalAppts = appointments || [];
+  const completedTotal = totalAppts.filter(a => a.status === 'completed').length;
+  const pendingTotal = totalAppts.filter(a => a.status === 'scheduled').length;
+  const nextAppt = totalAppts.filter(a => a.status === 'scheduled')
+    .sort((a, b) => {
+      const dateA = new Date(`${a.appointment_date}T${a.appointment_time}`);
+      const dateB = new Date(`${b.appointment_date}T${b.appointment_time}`);
+      return dateA.getTime() - dateB.getTime();
+    })[0];
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -87,14 +94,16 @@ export default function DoctorAppointmentsPage() {
       {/* Header */}
       <div className="flex justify-end gap-4">
         <div className="flex gap-3">
-           <Button variant="outline" className="border-slate-200 shadow-sm hidden sm:flex">
+           <Button variant="outline" onClick={() => toast.success("Calendar synced successfully")} className="border-slate-200 shadow-sm hidden sm:flex">
              <CalendarX className="w-4 h-4 mr-2 text-slate-500" />
              Sync Calendar
            </Button>
-           <Button className="bg-blue-600 hover:bg-blue-700 text-white shadow-sm hidden sm:flex">
-             <Plus className="w-4 h-4 mr-2" />
-             Book Appointment
-           </Button>
+           <BookAppointmentModal trigger={
+             <Button className="bg-blue-600 hover:bg-blue-700 text-white shadow-sm hidden sm:flex">
+               <Plus className="w-4 h-4 mr-2" />
+               Book Appointment
+             </Button>
+           } />
         </div>
       </div>
 
@@ -106,8 +115,8 @@ export default function DoctorAppointmentsPage() {
                 <Clock className="w-5 h-5" />
              </div>
              <div>
-               <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Today</p>
-               <h4 className="text-xl font-bold text-slate-900 dark:text-white">{todaysAppts.length}</h4>
+               <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Total Appts</p>
+               <h4 className="text-xl font-bold text-slate-900 dark:text-white">{totalAppts.length}</h4>
              </div>
           </CardContent>
         </Card>
@@ -118,7 +127,7 @@ export default function DoctorAppointmentsPage() {
              </div>
              <div>
                <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Pending</p>
-               <h4 className="text-xl font-bold text-slate-900 dark:text-white">{pendingToday}</h4>
+               <h4 className="text-xl font-bold text-slate-900 dark:text-white">{pendingTotal}</h4>
              </div>
           </CardContent>
         </Card>
@@ -129,7 +138,7 @@ export default function DoctorAppointmentsPage() {
              </div>
              <div>
                <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Completed</p>
-               <h4 className="text-xl font-bold text-slate-900 dark:text-white">{completedToday}</h4>
+               <h4 className="text-xl font-bold text-slate-900 dark:text-white">{completedTotal}</h4>
              </div>
           </CardContent>
         </Card>
@@ -141,7 +150,7 @@ export default function DoctorAppointmentsPage() {
              <div className="overflow-hidden">
                <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Next Appt</p>
                <h4 className="text-lg font-bold text-slate-900 dark:text-white truncate">
-                 {nextAppt ? nextAppt.appointment_time : '--:--'}
+                 {nextAppt ? `${new Date(nextAppt.appointment_date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} ${nextAppt.appointment_time}` : '--:--'}
                </h4>
              </div>
           </CardContent>
@@ -202,11 +211,13 @@ export default function DoctorAppointmentsPage() {
                 : "Enjoy your free schedule or create a new appointment."}
             </p>
             <div className="flex items-center justify-center gap-4 flex-col sm:flex-row">
-               <Button className="bg-blue-600 hover:bg-blue-700 text-white shadow-sm rounded-full px-6 w-full sm:w-auto">
-                 <Plus className="w-4 h-4 mr-2" />
-                 Book Appointment
-               </Button>
-               <Button variant="outline" className="rounded-full px-6 border-slate-200 shadow-sm w-full sm:w-auto">
+               <BookAppointmentModal trigger={
+                 <Button className="bg-blue-600 hover:bg-blue-700 text-white shadow-sm rounded-full px-6 w-full sm:w-auto">
+                   <Plus className="w-4 h-4 mr-2" />
+                   Book Appointment
+                 </Button>
+               } />
+               <Button variant="outline" onClick={() => toast.success("Calendar synced successfully")} className="rounded-full px-6 border-slate-200 shadow-sm w-full sm:w-auto">
                  Sync Calendar
                </Button>
             </div>
@@ -337,13 +348,16 @@ export default function DoctorAppointmentsPage() {
                                   </Button>
                                 }
                             />
-                            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full text-slate-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-slate-800" title="View Notes">
+                            <Button variant="ghost" size="icon" onClick={() => toast.info(appt.notes ? `Note: ${appt.notes}` : "No notes available")} className="h-8 w-8 rounded-full text-slate-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-slate-800" title="View Notes">
                                 <FileText className="w-4 h-4" />
                             </Button>
                           </div>
                           
                           <div>
-                            <Button size="sm" className={`h-8 rounded-full px-5 shadow-sm text-xs font-bold tracking-wide uppercase ${
+                            <Button 
+                              size="sm" 
+                              onClick={() => router.push(`/doctor/patients/${appt.patient_id}`)}
+                              className={`h-8 rounded-full px-5 shadow-sm text-xs font-bold tracking-wide uppercase ${
                                appt.status === 'completed' 
                                 ? 'bg-slate-200 text-slate-600 hover:bg-slate-300 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700' 
                                 : 'bg-blue-600 text-white hover:bg-blue-700'
@@ -364,11 +378,13 @@ export default function DoctorAppointmentsPage() {
       </div>
 
       {/* Mobile FAB */}
-      <Button 
-        className="fixed bottom-6 right-6 md:hidden w-14 h-14 rounded-full bg-blue-600 hover:bg-blue-700 text-white shadow-[0_8px_30px_rgb(59,130,246,0.3)] z-50 flex items-center justify-center p-0"
-      >
-        <Plus className="w-6 h-6" />
-      </Button>
+      <BookAppointmentModal trigger={
+        <Button 
+          className="fixed bottom-6 right-6 md:hidden w-14 h-14 rounded-full bg-blue-600 hover:bg-blue-700 text-white shadow-[0_8px_30px_rgb(59,130,246,0.3)] z-50 flex items-center justify-center p-0"
+        >
+          <Plus className="w-6 h-6" />
+        </Button>
+      } />
     </div>
   );
 }

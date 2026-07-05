@@ -1,71 +1,43 @@
-from app.db.firebase import get_db
+from app.db.supabase import db
 from app.schemas.doctor import DoctorCreate, DoctorUpdate, DoctorInDB
 from typing import List, Optional
 from datetime import datetime
-import uuid
 
 class DoctorService:
     @staticmethod
-    def get_collection(tenant_id: str):
-        db = get_db()
-        if not db:
-            return None
-        return db.collection("tenants").document(tenant_id).collection("doctors")
-
-    @staticmethod
     def get_doctor(tenant_id: str, doctor_id: str) -> Optional[DoctorInDB]:
-        collection = DoctorService.get_collection(tenant_id)
-        if not collection: return None
-        
-        doc = collection.document(doctor_id).get()
-        if doc.exists:
-            data = doc.to_dict()
-            data["id"] = doc.id
-            data["tenant_id"] = tenant_id
-            return DoctorInDB(**data)
+        if not db: return None
+        response = db.table("doctors").select("*").eq("tenant_id", tenant_id).eq("id", doctor_id).execute()
+        if response.data:
+            return DoctorInDB(**response.data[0])
         return None
 
     @staticmethod
     def create_doctor(tenant_id: str, doctor: DoctorCreate) -> Optional[DoctorInDB]:
-        collection = DoctorService.get_collection(tenant_id)
-        if not collection: return None
-        
-        doctor_id = str(uuid.uuid4())
-        now = datetime.utcnow()
+        if not db: return None
         
         doctor_data = doctor.model_dump()
-        doctor_data.update({
-            "created_at": now,
-            "updated_at": now
-        })
-        
-        collection.document(doctor_id).set(doctor_data)
-        
-        doctor_data["id"] = doctor_id
         doctor_data["tenant_id"] = tenant_id
-        return DoctorInDB(**doctor_data)
+        
+        response = db.table("doctors").insert(doctor_data).execute()
+        if response.data:
+            return DoctorInDB(**response.data[0])
+        return None
 
     @staticmethod
     def get_all_doctors(tenant_id: str) -> List[DoctorInDB]:
-        collection = DoctorService.get_collection(tenant_id)
-        if not collection: return []
+        if not db: return []
         
-        docs = collection.stream()
-        doctors = []
-        for doc in docs:
-            data = doc.to_dict()
-            data["id"] = doc.id
-            data["tenant_id"] = tenant_id
-            doctors.append(DoctorInDB(**data))
-        return doctors
+        response = db.table("doctors").select("*").eq("tenant_id", tenant_id).execute()
+        if response.data:
+            return [DoctorInDB(**row) for row in response.data]
+        return []
 
     @staticmethod
     def delete_doctor(tenant_id: str, doctor_id: str) -> bool:
-        collection = DoctorService.get_collection(tenant_id)
-        if not collection: return False
+        if not db: return False
         
-        doc_ref = collection.document(doctor_id)
-        if doc_ref.get().exists:
-            doc_ref.delete()
-            return True
-        return False
+        response = db.table("doctors").delete().eq("tenant_id", tenant_id).eq("id", doctor_id).execute()
+        # In supabase-py, data might be returned on successful delete if configured, or just check count
+        # Typically, if it doesn't throw an error, it succeeded.
+        return True

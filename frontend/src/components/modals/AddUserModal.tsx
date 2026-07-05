@@ -16,8 +16,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { createUser, createDoctor } from "@/lib/api";
 import { Role } from "@/lib/rbac";
-import { auth } from "@/lib/firebase";
-import { sendPasswordResetEmail } from "firebase/auth";
+import { supabase } from "@/lib/supabase";
 import { Loader2, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
@@ -58,8 +57,8 @@ export function AddUserModal({ tenants = [], fixedRole, fixedTenantId, triggerTe
         tenant_id: tenantId,
       });
 
-      // 2. Trigger Firebase Password Reset Email
-      await sendPasswordResetEmail(auth, email);
+      // 2. Trigger Supabase Password Reset Email
+      await supabase.auth.resetPasswordForEmail(email);
 
       // 3. If role is doctor, we also create the Doctor record
       if (role === Role.DOCTOR) {

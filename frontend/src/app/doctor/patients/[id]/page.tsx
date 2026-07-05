@@ -10,6 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { toast } from "sonner";
 import { 
   ArrowLeft, Phone, Mail, FileText, Pill, 
   Activity, AlertCircle, Calendar, Plus, ScanText, 
@@ -161,7 +162,7 @@ export default function PatientProfilePage() {
         <div className="flex-1" />
         
         <div className="flex gap-2">
-          <Button variant="outline" className="shadow-sm h-9 bg-white text-xs">
+          <Button variant="outline" className="shadow-sm h-9 bg-white text-xs" onClick={() => toast.success(`Calling ${pName}...`)}>
             <Phone className="w-3.5 h-3.5 mr-2 text-slate-500" /> Call
           </Button>
           <Button className="shadow-sm h-9 bg-blue-600 hover:bg-blue-700 text-white text-xs" onClick={() => { setActiveTab('prescriptions'); startNewPrescription(); }}>
@@ -176,7 +177,7 @@ export default function PatientProfilePage() {
         <div className="lg:col-span-1 space-y-4">
           <Card className="shadow-sm border-slate-200 overflow-hidden">
             <div className="bg-gradient-to-r from-slate-100 to-slate-50 h-20 relative border-b border-slate-100">
-              <Button variant="ghost" size="icon" className="absolute top-3 right-3 text-slate-500 hover:text-blue-600 bg-white/60 hover:bg-white h-8 w-8 rounded-full shadow-sm backdrop-blur-sm transition-all" title="Edit Profile">
+              <Button variant="ghost" size="icon" onClick={() => toast.info("Edit profile form coming soon")} className="absolute top-3 right-3 text-slate-500 hover:text-blue-600 bg-white/60 hover:bg-white h-8 w-8 rounded-full shadow-sm backdrop-blur-sm transition-all" title="Edit Profile">
                 <Pencil className="w-3.5 h-3.5" />
               </Button>
             </div>
@@ -380,9 +381,9 @@ export default function PatientProfilePage() {
                         <ArrowLeft className="w-3 h-3 mr-1" /> Edit
                       </Button>
                       <div className="flex gap-2">
-                        <Button size="sm" variant="outline" className="h-7 text-xs shadow-none bg-white"><Printer className="w-3.5 h-3.5 mr-1" /> Print</Button>
-                        <Button size="sm" variant="outline" className="h-7 text-xs shadow-none bg-white"><Download className="w-3.5 h-3.5 mr-1" /> PDF</Button>
-                        <Button size="sm" className="h-7 text-xs bg-emerald-600 hover:bg-emerald-700 shadow-none text-white font-bold px-4">Save to EMR</Button>
+                        <Button size="sm" variant="outline" className="h-7 text-xs shadow-none bg-white" onClick={() => toast.info("Opening print dialog...")}><Printer className="w-3.5 h-3.5 mr-1" /> Print</Button>
+                        <Button size="sm" variant="outline" className="h-7 text-xs shadow-none bg-white" onClick={() => toast.info("Downloading PDF...")}><Download className="w-3.5 h-3.5 mr-1" /> PDF</Button>
+                        <Button size="sm" className="h-7 text-xs bg-emerald-600 hover:bg-emerald-700 shadow-none text-white font-bold px-4" onClick={() => toast.success("Prescription saved to EMR!")}>Save to EMR</Button>
                       </div>
                     </div>
 

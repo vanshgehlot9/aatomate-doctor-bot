@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from app.api.v1.endpoints import tenants, whatsapp, patients, doctors, appointments, ai, ipd, laboratory, users, schedules, webhooks, prescriptions
+from app.api.v1.endpoints import tenants, whatsapp, patients, doctors, appointments, ai, ipd, laboratory, users, schedules, webhooks, prescriptions, reports
 
 api_router = APIRouter()
 api_router.include_router(tenants.router, prefix="/tenants", tags=["tenants"])
@@ -14,3 +14,4 @@ api_router.include_router(ipd.router, prefix="/ipd", tags=["ipd"])
 api_router.include_router(laboratory.router, prefix="/laboratory", tags=["laboratory"])
 api_router.include_router(users.router, prefix="/users", tags=["users"])
 api_router.include_router(prescriptions.router, prefix="/prescriptions", tags=["prescriptions"])
+api_router.include_router(reports.router, prefix="/reports", tags=["reports"])

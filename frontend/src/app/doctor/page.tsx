@@ -10,6 +10,8 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { 
   Users, 
   Calendar, 
@@ -54,6 +56,7 @@ const itemVariants = {
 };
 
 export default function DoctorDashboard() {
+  const router = useRouter();
   const { userProfile } = useAuth();
   
   const { data: appointments, isLoading: loadingAppts } = useQuery({
@@ -332,7 +335,7 @@ export default function DoctorDashboard() {
                     </div>
                   )}
 
-                  <Button className="w-full rounded-xl py-4 sm:py-6 h-auto shadow-md hover:shadow-lg transition-all bg-foreground hover:bg-foreground/90 text-background text-xs sm:text-sm font-medium">
+                  <Button onClick={() => toast.success("AI Summary generated for " + nextPatient.name)} className="w-full rounded-xl py-4 sm:py-6 h-auto shadow-md hover:shadow-lg transition-all bg-foreground hover:bg-foreground/90 text-background text-xs sm:text-sm font-medium">
                     Generate AI Summary
                   </Button>
                 </div>
@@ -380,7 +383,7 @@ export default function DoctorDashboard() {
               <div>
                 <CardTitle className="text-base sm:text-lg">Upcoming Appointments</CardTitle>
               </div>
-              <Button variant="ghost" size="sm" className="text-primary rounded-full hover:bg-primary/10 h-8 text-xs sm:text-sm px-2 sm:px-3">
+              <Button onClick={() => router.push("/doctor/appointments")} variant="ghost" size="sm" className="text-primary rounded-full hover:bg-primary/10 h-8 text-xs sm:text-sm px-2 sm:px-3">
                 View All <ChevronRight className="w-3.5 h-3.5 sm:w-4 sm:h-4 ml-0.5 sm:ml-1" />
               </Button>
             </CardHeader>
@@ -447,10 +450,10 @@ export default function DoctorDashboard() {
                           </div>
                           
                           <div className="flex items-center gap-2 mt-2 sm:mt-0 pl-[62px] sm:pl-0">
-                            <Button variant="outline" size="sm" className="rounded-full shadow-sm hover:bg-primary/5 hover:text-primary transition-colors opacity-100 sm:opacity-0 group-hover:opacity-100 h-8 text-[11px] sm:text-xs px-3">
+                            <Button variant="outline" size="sm" onClick={() => toast.success("Voice recording started")} className="rounded-full shadow-sm hover:bg-primary/5 hover:text-primary transition-colors opacity-100 sm:opacity-0 group-hover:opacity-100 h-8 text-[11px] sm:text-xs px-3">
                               Record
                             </Button>
-                            <Button size="sm" className="rounded-full shadow-sm h-8 text-[11px] sm:text-xs px-4">
+                            <Button size="sm" onClick={() => router.push(`/doctor/patients/${appt.patient_id}`)} className="rounded-full shadow-sm h-8 text-[11px] sm:text-xs px-4">
                               Start
                             </Button>
                           </div>

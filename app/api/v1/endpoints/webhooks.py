@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, Header, Query
 from typing import List, Dict
 from datetime import datetime, timedelta
-from app.db.firebase import db
+from app.db.supabase import db
 from app.schemas.appointment import AppointmentInDB
 
 router = APIRouter()
@@ -16,16 +16,13 @@ def get_upcoming_appointments(x_tenant_id: str = Header(...)):
     - '1_day': exactly 1 day from now
     - '5_mins': in exactly 5 minutes
     """
-    collection = db.collection("tenants").document(x_tenant_id).collection("appointments")
-    if not collection:
-        raise HTTPException(status_code=500, detail="Database error")
+    if not db:
+        raise HTTPException(status_code=500, detail="Database connection failed")
+        
+    response = db.table("appointments").select("*").eq("tenant_id", x_tenant_id).in_("status", ["Confirmed", "Pending"]).execute()
+    docs = response.data if response.data else []
         
     now = datetime.utcnow()
-    # Note: In a real production system, you'd calculate exact time windows 
-    # based on the start_time of the appointment. 
-    # For this demonstration, we return all confirmed upcoming appointments.
-    
-    docs = collection.where("status", "==", "Confirmed").stream()
     
     buckets = {
         "7_days": [],
@@ -36,10 +33,9 @@ def get_upcoming_appointments(x_tenant_id: str = Header(...)):
         "5_mins": []
     }
     
-    for doc in docs:
-        data = doc.to_dict()
-        data["id"] = doc.id
-        data["tenant_id"] = x_tenant_id
+    for row in docs:
+        data = row
+        # id and tenant_id are already in the row for Supabase
         
         appt_date_str = data.get("appointment_date")
         appt_time_str = data.get("appointment_time")

@@ -15,14 +15,13 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { SidebarContent, MobileSidebarContent } from "./DynamicSidebar";
 import { UserProfile } from "@/lib/rbac";
-import { auth } from "@/lib/firebase";
-import { signOut } from "firebase/auth";
+import { supabase } from "@/lib/supabase";
 
 export function Topbar({ userProfile }: { userProfile: UserProfile }) {
   const router = useRouter();
 
   const handleLogout = async () => {
-    await signOut(auth);
+    await supabase.auth.signOut();
     const ALL_COOKIES = ["vendor_session", "business_session", "staff_session", "super_admin_session", "doctor_session"];
     for (const cookie of ALL_COOKIES) {
       document.cookie = `${cookie}=; path=/; max-age=0`;

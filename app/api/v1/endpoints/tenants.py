@@ -1,9 +1,33 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from typing import List
-from app.schemas.tenant import TenantCreate, TenantInDB
+from app.api.deps import get_current_user, CurrentUser
+from app.schemas.tenant import TenantCreate, TenantInDB, TenantUpdate
 from app.services.tenant_service import TenantService
 
 router = APIRouter()
+
+@router.get("/me", response_model=TenantInDB)
+def get_my_tenant(current_user: CurrentUser = Depends(get_current_user)):
+    """
+    Get the current user's tenant details.
+    """
+    tenant = TenantService.get_tenant(current_user.tenant_id)
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+    return tenant
+
+@router.put("/me", response_model=TenantInDB)
+def update_my_tenant(
+    tenant_in: TenantUpdate,
+    current_user: CurrentUser = Depends(get_current_user)
+):
+    """
+    Update the current user's tenant details.
+    """
+    tenant = TenantService.update_tenant(current_user.tenant_id, tenant_in)
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+    return tenant
 
 @router.post("/", response_model=TenantInDB)
 def create_tenant(tenant_in: TenantCreate):

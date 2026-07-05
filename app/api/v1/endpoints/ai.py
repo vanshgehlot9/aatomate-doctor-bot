@@ -1,4 +1,5 @@
-from fastapi import APIRouter, HTTPException, Header, UploadFile, File, Form
+from fastapi import APIRouter, Depends, HTTPException, Header, UploadFile, File, Form
+from app.api.deps import get_current_user, CurrentUser
 from app.services.symptom_checker import SymptomCheckerService
 from app.services.ocr_service import ocr_service
 from app.services.doctor_copilot import DoctorCopilotService
@@ -10,7 +11,7 @@ class SymptomRequest(BaseModel):
     symptoms: str
 
 @router.post("/symptom-checker")
-def check_symptoms(request: SymptomRequest, x_tenant_id: str = Header(...)):
+def check_symptoms(request: SymptomRequest, current_user: CurrentUser = Depends(get_current_user)):
     """
     Analyzes patient symptoms and returns an emergency score and department suggestion.
     """
@@ -23,7 +24,7 @@ def check_symptoms(request: SymptomRequest, x_tenant_id: str = Header(...)):
 async def analyze_document(
     file: UploadFile = File(...),
     patient_history: str = Form(""),
-    x_tenant_id: str = Header(...)
+    current_user: CurrentUser = Depends(get_current_user)
 ):
     """
     Upload a medical document (image/pdf), extract text via OCR, and generate a Doctor Brief.

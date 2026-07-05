@@ -1,5 +1,5 @@
 import axios from "axios";
-import { auth } from "./firebase";
+import { supabase } from "./supabase";
 
 const RAW_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 const API_ROOT = RAW_BASE_URL.replace(/\/$/, "");
@@ -10,11 +10,11 @@ export const api = axios.create({
   headers: { "Content-Type": "application/json" },
 });
 
-// Intercept requests and attach the Firebase ID token and Tenant ID
+// Intercept requests and attach the Supabase session token and Tenant ID
 api.interceptors.request.use(async (config) => {
-  if (auth.currentUser) {
-    const token = await auth.currentUser.getIdToken();
-    config.headers.Authorization = `Bearer ${token}`;
+  const { data: { session } } = await supabase.auth.getSession();
+  if (session?.access_token) {
+    config.headers.Authorization = `Bearer ${session.access_token}`;
   }
   
   if (typeof window !== "undefined") {
@@ -35,6 +35,14 @@ import { Tenant, Doctor, Patient, Appointment, LaboratoryTest } from "@/types/ap
 
 export const getTenants = async (): Promise<Tenant[]> => {
   return (await api.get("/tenants/")).data;
+};
+
+export const getMyTenant = async (): Promise<Tenant> => {
+  return (await api.get("/tenants/me")).data;
+};
+
+export const updateMyTenant = async (data: Partial<Tenant>): Promise<Tenant> => {
+  return (await api.put("/tenants/me", data)).data;
 };
 
 export const getDoctors = async (): Promise<Doctor[]> => {

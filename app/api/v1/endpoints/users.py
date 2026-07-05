@@ -1,9 +1,8 @@
-from fastapi import APIRouter, HTTPException, Header
+from fastapi import APIRouter, Depends, HTTPException, Header
+from app.api.deps import get_current_user, CurrentUser
 from pydantic import BaseModel, EmailStr
 from typing import Optional
-from app.db.firebase import get_db
-import firebase_admin
-from firebase_admin import auth
+from app.db.supabase import db
 import uuid
 import random
 import string
@@ -28,102 +27,105 @@ def generate_random_password(length=16):
     return ''.join(random.choice(characters) for i in range(length))
 
 @router.post("/", response_model=UserResponse)
-def create_user(user_in: UserCreate, x_tenant_id: str = Header(None)):
+def create_user(user_in: UserCreate, current_user: CurrentUser = Depends(get_current_user)):
     """
-    Create a new user in Firebase Auth and Firestore.
-    Requires an existing valid auth context but since we don't have strict backend RBAC middleware yet,
-    we just rely on the frontend sending the tenant_id or passing it in the body.
+    Create a new user in Supabase Auth and database.
     """
     try:
-        # 1. Create the user in Firebase Auth
+        if not db:
+            raise HTTPException(status_code=500, detail="Database not initialized")
+            
         random_password = generate_random_password()
         
-        firebase_user = auth.create_user(
-            email=user_in.email,
-            password=random_password,
-            display_name=user_in.name,
-            phone_number=user_in.phone
-        )
-        
-        # 2. Set Custom Claims (Optional but good practice)
-        auth.set_custom_user_claims(firebase_user.uid, {
-            'role': user_in.role,
-            'tenantId': user_in.tenant_id
-        })
-        
-        # 3. Create the user profile in Firestore
-        db = get_db()
-        if db:
-            now = datetime.utcnow()
-            profile_data = {
-                "uid": firebase_user.uid,
-                "email": user_in.email,
+        # 1. Create the user in Supabase Auth using Admin API
+        user_response = db.auth.admin.create_user({
+            "email": user_in.email,
+            "password": random_password,
+            "phone": user_in.phone,
+            "email_confirm": True,
+            "user_metadata": {
                 "name": user_in.name,
                 "role": user_in.role,
                 "tenantId": user_in.tenant_id,
-                "createdAt": now,
-                "updatedAt": now
+                "tenant_id": user_in.tenant_id
             }
-            db.collection("users").document(firebase_user.uid).set(profile_data)
-            
-        return UserResponse(uid=firebase_user.uid, email=user_in.email, role=user_in.role)
+        })
         
-    except auth.EmailAlreadyExistsError:
-        raise HTTPException(status_code=400, detail="User with this email already exists")
+        if not user_response.user:
+            raise HTTPException(status_code=500, detail="Failed to create user in Auth")
+            
+        uid = user_response.user.id
+        
+        # 2. Create the user profile in database
+        now = datetime.utcnow().isoformat()
+        profile_data = {
+            "id": uid,
+            "email": user_in.email,
+            "name": user_in.name,
+            "role": user_in.role,
+            "tenant_id": user_in.tenant_id,
+            "created_at": now,
+            "updated_at": now
+        }
+        
+        db.table("users").insert(profile_data).execute()
+            
+        return UserResponse(uid=uid, email=user_in.email, role=user_in.role)
+        
     except Exception as e:
+        if "User already registered" in str(e):
+            raise HTTPException(status_code=400, detail="User with this email already exists")
         raise HTTPException(status_code=500, detail=f"Failed to create user: {str(e)}")
 
 @router.get("/")
-def get_users():
+def get_users(current_user: CurrentUser = Depends(get_current_user)):
     """
-    Get all users from Firestore.
+    Get all users from database for the current user's tenant.
     """
     try:
-        db = get_db()
         if not db:
             return []
             
-        users_ref = db.collection("users")
-        docs = users_ref.stream()
+        # Filter by the authenticated user's tenantId — no cross-hospital data
+        response = db.table("users").select("*").eq("tenant_id", current_user.tenant_id).execute()
         
         users_list = []
-        for doc in docs:
-            user_data = doc.to_dict()
-            users_list.append({
-                "uid": user_data.get("uid"),
-                "email": user_data.get("email"),
-                "name": user_data.get("name"),
-                "role": user_data.get("role"),
-                "tenantId": user_data.get("tenantId")
-            })
+        if response.data:
+            for user_data in response.data:
+                users_list.append({
+                    "uid": user_data.get("id"),
+                    "email": user_data.get("email"),
+                    "name": user_data.get("name"),
+                    "role": user_data.get("role"),
+                    "tenantId": user_data.get("tenant_id")
+                })
             
         return users_list
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to fetch users: {str(e)}")
 
 @router.delete("/{uid}")
-def delete_user(uid: str):
+def delete_user(uid: str, current_user: CurrentUser = Depends(get_current_user)):
     """
-    Delete a user from Firebase Auth and Firestore.
+    Delete a user from Supabase Auth and database.
+    Only admins within the same tenant can delete users.
     """
+    if current_user.role not in ("hospital_admin", "super_admin"):
+        raise HTTPException(status_code=403, detail="Not authorized to delete users")
     try:
-        # Delete from Firebase Auth
-        auth.delete_user(uid)
+        if not db:
+            raise HTTPException(status_code=500, detail="Database not initialized")
+            
+        # Delete from Supabase Auth using Admin API
+        try:
+            db.auth.admin.delete_user(uid)
+        except Exception as e:
+            # If user is not in Auth but might be in db, try deleting from db anyway
+            print(f"Warning: User not deleted from auth: {e}")
         
-        # Delete from Firestore
-        db = get_db()
-        if db:
-            db.collection("users").document(uid).delete()
+        # Delete from database
+        db.table("users").delete().eq("id", uid).execute()
             
         return {"success": True, "message": "User deleted successfully"}
-    except auth.UserNotFoundError:
-        # If user is not in Auth but might be in Firestore, try deleting from Firestore anyway
-        try:
-            db = get_db()
-            if db:
-                db.collection("users").document(uid).delete()
-            return {"success": True, "message": "User deleted from Firestore (not found in Auth)"}
-        except Exception as e:
-            raise HTTPException(status_code=500, detail=f"Failed to delete user from Firestore: {str(e)}")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to delete user: {str(e)}")

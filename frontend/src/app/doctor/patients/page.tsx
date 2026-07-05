@@ -11,6 +11,8 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { UploadPrescriptionModal } from "@/components/modals/UploadPrescriptionModal";
+import { AddPatientModal } from "@/components/modals/AddPatientModal";
+import { toast } from "sonner";
 import { motion, AnimatePresence } from "framer-motion";
 import { 
   Users, Search, Plus, Phone, Mail, 
@@ -146,10 +148,12 @@ export default function DoctorPatientsPage() {
                 </button>
               )}
             </div>
-            <Button className="h-10 rounded-full shadow-sm bg-blue-600 hover:bg-blue-700 text-white hidden sm:flex shrink-0 px-5">
-              <Plus className="w-4 h-4 mr-2" />
-              Add Patient
-            </Button>
+            <AddPatientModal trigger={
+              <Button className="h-10 rounded-full shadow-sm bg-blue-600 hover:bg-blue-700 text-white hidden sm:flex shrink-0 px-5">
+                <Plus className="w-4 h-4 mr-2" />
+                Add Patient
+              </Button>
+            } />
           </div>
         </div>
 
@@ -265,10 +269,12 @@ export default function DoctorPatientsPage() {
                 ? "We couldn't find any patients matching your current filters and search query."
                 : "Your patient directory is currently empty. Start by adding a new patient."}
             </p>
-            <Button className="h-11 rounded-full px-8 shadow-md bg-blue-600 hover:bg-blue-700 text-white">
-              <Plus className="w-4 h-4 mr-2" />
-              Register New Patient
-            </Button>
+            <AddPatientModal trigger={
+              <Button className="h-11 rounded-full px-8 shadow-md bg-blue-600 hover:bg-blue-700 text-white">
+                <Plus className="w-4 h-4 mr-2" />
+                Register New Patient
+              </Button>
+            } />
           </motion.div>
         ) : (
           <motion.div 
@@ -400,10 +406,10 @@ export default function DoctorPatientsPage() {
                           </div>
                           
                           <div className="flex items-center gap-1">
-                             <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-slate-800" title="Call">
+                             <Button variant="ghost" size="icon" onClick={() => toast.success(`Calling ${patient.name}...`)} className="h-8 w-8 rounded-full text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 dark:hover:bg-slate-800" title="Call">
                               <Phone className="w-3.5 h-3.5" />
                             </Button>
-                            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full text-slate-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-slate-800" title="Message">
+                            <Button variant="ghost" size="icon" onClick={() => toast.success(`Opening chat with ${patient.name}...`)} className="h-8 w-8 rounded-full text-slate-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-slate-800" title="Message">
                               <Mail className="w-3.5 h-3.5" />
                             </Button>
                           </div>
@@ -420,11 +426,13 @@ export default function DoctorPatientsPage() {
       </div>
 
       {/* Mobile FAB */}
-      <Button 
-        className="fixed bottom-6 right-6 md:hidden w-14 h-14 rounded-full bg-blue-600 hover:bg-blue-700 text-white shadow-[0_8px_30px_rgb(59,130,246,0.3)] z-50 flex items-center justify-center p-0"
-      >
-        <Plus className="w-6 h-6" />
-      </Button>
+      <AddPatientModal trigger={
+        <Button 
+          className="fixed bottom-6 right-6 md:hidden w-14 h-14 rounded-full bg-blue-600 hover:bg-blue-700 text-white shadow-[0_8px_30px_rgb(59,130,246,0.3)] z-50 flex items-center justify-center p-0"
+        >
+          <Plus className="w-6 h-6" />
+        </Button>
+      } />
     </div>
   );
 }

@@ -10,6 +10,10 @@ class TenantBase(BaseModel):
     address: Optional[str] = None
     whatsapp_number_id: Optional[str] = None
     is_active: bool = True
+    clinic_address: Optional[str] = None
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
+    room_floor: Optional[str] = None
 
 class TenantCreate(TenantBase):
     pass
@@ -22,6 +26,10 @@ class TenantUpdate(BaseModel):
     address: Optional[str] = None
     whatsapp_number_id: Optional[str] = None
     is_active: Optional[bool] = None
+    clinic_address: Optional[str] = None
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
+    room_floor: Optional[str] = None
 
 class TenantInDB(TenantBase):
     id: str

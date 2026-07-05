@@ -100,4 +100,51 @@ class GeminiOCREngine:
         except Exception as e:
             raise Exception(f"Gemini OCR Failed: {str(e)}")
 
+    def extract_report(self, image_bytes: bytes, mime_type: str) -> dict:
+        """
+        Extract structured data from any medical report:
+        Lab reports, MRI/CT/X-Ray reports, Discharge summaries, etc.
+        Returns: report_type, category, report_date, structured_data, ai_summary, ai_recommendation, tags, ocr_text
+        """
+        if not self.api_key:
+            raise Exception("GEMINI_API_KEY not configured. Cannot perform OCR.")
+
+        system_instruction = """
+You are a senior clinical AI assistant specialising in medical report analysis.
+You will receive an image or PDF of a medical report.
+
+Your task:
+1. Identify the report type (CBC, LFT, MRI, CT Scan, X-Ray, Ultrasound, ECG, Prescription, Discharge Summary, Vitamin, Thyroid, Lipid Profile, Diabetes/Blood Sugar, ECHO, Biopsy, Vaccination, or Other)
+2. Identify the category (Laboratory, Radiology, Prescription, Cardiology, Pathology, or Other)
+3. Extract the report date in YYYY-MM-DD format (if visible)
+4. Extract ALL parameters/findings into structured_data. Format:
+   { "Parameter Name": { "value": <number or string>, "unit": "<unit>", "reference": "<range>", "status": "Normal|Low|High|Critical" } }
+5. Generate a concise 2-4 sentence ai_summary in plain English (like a doctor explaining to a patient)
+6. Generate a short ai_recommendation (1-2 sentences on what action to take)
+7. Suggest relevant tags from: [cbc, blood, hemoglobin, wbc, platelets, liver, kidney, thyroid, lipid, cholesterol, sugar, glucose, hba1c, mri, ct, xray, ultrasound, ecg, echo, vitamin, biopsy, vaccination, discharge, prescription]
+8. Return the full raw OCR text in ocr_text
+
+Return ONLY valid JSON in this exact structure:
+{
+  "report_type": "",
+  "category": "",
+  "report_date": "",
+  "structured_data": {},
+  "ai_summary": "",
+  "ai_recommendation": "",
+  "tags": [],
+  "ocr_text": ""
+}
+Do not return markdown ticks. Return only the JSON object.
+"""
+        try:
+            import json
+            image_part = {"mime_type": mime_type, "data": image_bytes}
+            response = self.model.generate_content([system_instruction, image_part])
+            result = json.loads(response.text)
+            return result
+        except Exception as e:
+            raise Exception(f"Gemini Report OCR Failed: {str(e)}")
+
+
 ocr_engine = GeminiOCREngine()

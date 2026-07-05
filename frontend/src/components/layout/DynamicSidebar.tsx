@@ -3,8 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Role } from "@/lib/rbac";
-import { auth } from "@/lib/firebase";
-import { signOut } from "firebase/auth";
+import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
 import {
   LayoutDashboard,
@@ -48,6 +47,7 @@ const getNavigationByRole = (role: Role): SidebarItem[] => {
         { name: "Hospital Dashboard", href: "/admin", icon: LayoutDashboard },
         { name: "Doctors", href: "/admin/doctors", icon: Stethoscope },
         { name: "Staff", href: "/admin/staff", icon: Users },
+        { name: "Settings", href: "/admin/settings", icon: Settings },
       ];
     case Role.DOCTOR:
       return [
@@ -104,7 +104,7 @@ export function SidebarContent({ userProfile, onNavigate }: { userProfile: UserP
   const hospitalName = tenants?.find(t => t.id === userProfile.tenantId)?.hospital_name;
 
   const handleLogout = async () => {
-    await signOut(auth);
+    await supabase.auth.signOut();
     window.location.href = "/login";
   };
 
@@ -176,7 +176,7 @@ export function MobileSidebarContent({ userProfile, onNavigate }: { userProfile:
   const hospitalName = tenants?.find(t => t.id === userProfile.tenantId)?.hospital_name;
 
   const handleLogout = async () => {
-    await signOut(auth);
+    await supabase.auth.signOut();
     window.location.href = "/login";
   };
 

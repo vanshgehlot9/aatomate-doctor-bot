@@ -1,6 +1,6 @@
 from typing import List, Optional
 from datetime import datetime, date, timedelta
-from app.db.firebase import db
+from app.db.supabase import db
 from app.schemas.schedule import (
     DoctorScheduleCreate,
     DoctorScheduleInDB,
@@ -16,69 +16,54 @@ import uuid
 
 class ScheduleService:
     @staticmethod
-    def get_schedule_collection():
-        return db.collection('doctor_schedules')
-
-    @staticmethod
-    def get_holiday_collection():
-        return db.collection('doctor_holidays')
-
-    @staticmethod
-    def create_schedule(schedule_in: DoctorScheduleCreate) -> DoctorScheduleInDB:
-        doc_ref = ScheduleService.get_schedule_collection().document()
+    def create_schedule(tenant_id: str, schedule_in: DoctorScheduleCreate) -> DoctorScheduleInDB:
+        if not db: return None
+        
         data = schedule_in.dict()
-        now = datetime.utcnow()
-        data['id'] = doc_ref.id
-        data['created_at'] = now
-        data['updated_at'] = now
-        doc_ref.set(data)
-        return DoctorScheduleInDB(**data)
+        data['tenant_id'] = tenant_id
+        
+        response = db.table("doctor_schedules").insert(data).execute()
+        if response.data:
+            return DoctorScheduleInDB(**response.data[0])
+        return None
 
     @staticmethod
     def get_doctor_schedules(tenant_id: str, doctor_id: str) -> List[DoctorScheduleInDB]:
-        docs = (
-            ScheduleService.get_schedule_collection()
-            .where('tenant_id', '==', tenant_id)
-            .where('doctor_id', '==', doctor_id)
-            .stream()
-        )
-        schedules = []
-        for doc in docs:
-            data = doc.to_dict()
-            schedules.append(DoctorScheduleInDB(**data))
-        return schedules
+        if not db: return []
+        
+        response = db.table("doctor_schedules").select("*").eq("tenant_id", tenant_id).eq("doctor_id", doctor_id).execute()
+        if response.data:
+            return [DoctorScheduleInDB(**row) for row in response.data]
+        return []
     
     @staticmethod
-    def create_holiday(holiday_in: DoctorHolidayCreate) -> DoctorHolidayInDB:
-        doc_ref = ScheduleService.get_holiday_collection().document()
-        data = holiday_in.dict()
-        now = datetime.utcnow()
-        data['id'] = doc_ref.id
-        # Convert date to string for firestore serialization
-        data['date'] = data['date'].isoformat()
-        data['created_at'] = now
-        data['updated_at'] = now
-        doc_ref.set(data)
+    def create_holiday(tenant_id: str, holiday_in: DoctorHolidayCreate) -> DoctorHolidayInDB:
+        if not db: return None
         
-        # Parse back to date for Pydantic
-        data['date'] = holiday_in.date
-        return DoctorHolidayInDB(**data)
+        data = holiday_in.dict()
+        data['date'] = data['date'].isoformat()
+        data['tenant_id'] = tenant_id
+        
+        response = db.table("doctor_holidays").insert(data).execute()
+        
+        if response.data:
+            ret_data = response.data[0]
+            if isinstance(ret_data.get('date'), str):
+                ret_data['date'] = datetime.strptime(ret_data['date'], "%Y-%m-%d").date()
+            return DoctorHolidayInDB(**ret_data)
+        return None
 
     @staticmethod
     def get_doctor_holidays(tenant_id: str, doctor_id: str, target_date: date) -> List[DoctorHolidayInDB]:
-        docs = (
-            ScheduleService.get_holiday_collection()
-            .where('tenant_id', '==', tenant_id)
-            .where('doctor_id', '==', doctor_id)
-            .where('date', '==', target_date.isoformat())
-            .stream()
-        )
+        if not db: return []
+        
+        response = db.table("doctor_holidays").select("*").eq("tenant_id", tenant_id).eq("doctor_id", doctor_id).eq("date", target_date.isoformat()).execute()
         holidays = []
-        for doc in docs:
-            data = doc.to_dict()
-            data['date'] = datetime.strptime(data['date'], "%Y-%m-%d").date()
-            # Handle naive datetime conversion safely based on data types
-            holidays.append(DoctorHolidayInDB(**data))
+        if response.data:
+            for row in response.data:
+                if isinstance(row.get('date'), str):
+                    row['date'] = datetime.strptime(row['date'], "%Y-%m-%d").date()
+                holidays.append(DoctorHolidayInDB(**row))
         return holidays
 
     @staticmethod
@@ -106,16 +91,14 @@ class ScheduleService:
             return []
 
         # 3. Filter out already-booked slots
-        slots_collection = db.collection('appointment_slots')
-        booked_docs = (
-            slots_collection
-            .where('tenant_id', '==', tenant_id)
-            .where('doctor_id', '==', doctor_id)
-            .where('date', '==', target_date.isoformat())
-            .where('status', 'in', ['Locked', 'Booked', 'Blocked'])
-            .stream()
-        )
-        booked_times = {doc.to_dict()['start_time'] for doc in booked_docs}
+        if not db: return []
+        
+        response = db.table("appointments").select("appointment_time").eq("tenant_id", tenant_id).eq("doctor_id", doctor_id).eq("appointment_date", target_date.isoformat()).in_("status", ['Pending', 'Confirmed', 'Checked-In']).execute()
+        
+        booked_times = {row['appointment_time'] for row in response.data} if response.data else set()
+        
+        # Alternatively we can check appointment_slots table if we migrate that. But appointments works for our fallback setup.
+        
         return [s for s in generated_slots if s.start_time not in booked_times]
 
     # ── Fallback slot generator ─────────────────────────────────────────────────

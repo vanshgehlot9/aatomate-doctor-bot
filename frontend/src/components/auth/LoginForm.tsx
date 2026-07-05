@@ -1,9 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { signInWithEmailAndPassword, signInWithPopup, GoogleAuthProvider } from "firebase/auth";
-import { auth, db } from "@/lib/firebase";
-import { doc, getDoc } from "firebase/firestore";
+import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -47,15 +45,35 @@ export function LoginForm() {
     e.preventDefault();
     setLoading(true);
     try {
-      const userCredential = await signInWithEmailAndPassword(auth, email, password);
-      const userDoc = await getDoc(doc(db, "users", userCredential.user.uid));
-      if (userDoc.exists()) {
-        const profile = userDoc.data() as UserProfile;
-        toast.success("Login successful!");
-        setSessionCookie(profile.role);
-        handleRedirect(profile.role);
-      } else {
-        toast.error("User profile not found. Please contact support.");
+      const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+      
+      if (authError) throw authError;
+      
+      if (authData.user) {
+        const { data: userDoc, error: dbError } = await supabase
+            .from("users")
+            .select("*")
+            .eq("id", authData.user.id)
+            .single();
+            
+        if (userDoc && !dbError) {
+          const profile: UserProfile = {
+              uid: userDoc.id,
+              email: userDoc.email,
+              name: userDoc.name,
+              role: userDoc.role as Role,
+              tenantId: userDoc.tenant_id,
+              hospitalId: userDoc.tenant_id
+          };
+          toast.success("Login successful!");
+          setSessionCookie(profile.role);
+          handleRedirect(profile.role);
+        } else {
+          toast.error("User profile not found. Please contact support.");
+        }
       }
     } catch (error: any) {
       toast.error(error.message || "Failed to login");
@@ -66,21 +84,17 @@ export function LoginForm() {
 
   const onGoogleLogin = async () => {
     setLoading(true);
-    const provider = new GoogleAuthProvider();
     try {
-      const userCredential = await signInWithPopup(auth, provider);
-      const userDoc = await getDoc(doc(db, "users", userCredential.user.uid));
-      if (userDoc.exists()) {
-        const profile = userDoc.data() as UserProfile;
-        toast.success("Google Login successful!");
-        setSessionCookie(profile.role);
-        handleRedirect(profile.role);
-      } else {
-        toast.error("User profile not found. Please contact support.");
-      }
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+      });
+      
+      if (error) throw error;
+      
+      // The OAuth login redirects, so we don't handle the user profile fetching here immediately.
+      // It is handled by AuthProvider on successful return from Google.
     } catch (error: any) {
       toast.error(error.message || "Failed to login with Google");
-    } finally {
       setLoading(false);
     }
   };

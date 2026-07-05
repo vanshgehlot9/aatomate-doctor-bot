@@ -1,4 +1,5 @@
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Header
+from fastapi import APIRouter, Depends, Depends, HTTPException, UploadFile, File, Form, Header
+from app.api.deps import get_current_user, CurrentUser
 from app.services.ocr_engine import ocr_engine
 from app.services.prescription_service import PrescriptionService
 from app.schemas.prescription import PrescriptionInDB
@@ -12,7 +13,7 @@ async def upload_prescription(
     appointment_id: str = Form(""),
     patient_id: str = Form(...),
     doctor_id: str = Form(...),
-    x_tenant_id: str = Header(..., alias="x-tenant-id")
+    current_user: CurrentUser = Depends(get_current_user)
 ):
     """
     Uploads a prescription image, runs OCR via Gemini Vision, and creates a structured 
@@ -57,19 +58,19 @@ async def upload_prescription(
             ocr_result["overall_confidence"] = 0
             
         # 3. Save to DB (Service will handle versioning and status)
-        saved_presc = PrescriptionService.create_prescription(x_tenant_id, ocr_result)
+        saved_presc = PrescriptionService.create_prescription(current_user.tenant_id, ocr_result)
         
         if not saved_presc:
             raise HTTPException(status_code=500, detail="Failed to save prescription to DB")
             
         # 4. Link to Appointment if provided
         if appointment_id:
-            from app.db.firebase import get_db
-            db = get_db()
-            db.collection("tenants").document(x_tenant_id).collection("appointments").document(appointment_id).update({
-                "prescription_id": saved_presc.id,
-                "status": "completed" # Assuming uploading prescription completes the consultation
-            })
+            from app.db.supabase import db
+            if db:
+                db.table("appointments").update({
+                    "prescription_id": saved_presc.id,
+                    "status": "Completed" # Assuming uploading prescription completes the consultation
+                }).eq("tenant_id", current_user.tenant_id).eq("id", appointment_id).execute()
         
         return saved_presc
         
@@ -80,9 +81,9 @@ async def upload_prescription(
 @router.get("/{prescription_id}", response_model=PrescriptionInDB)
 async def get_prescription(
     prescription_id: str,
-    x_tenant_id: str = Header(..., alias="x-tenant-id")
+    current_user: CurrentUser = Depends(get_current_user)
 ):
-    presc = PrescriptionService.get_prescription(x_tenant_id, prescription_id)
+    presc = PrescriptionService.get_prescription(current_user.tenant_id, prescription_id)
     if not presc:
         raise HTTPException(status_code=404, detail="Prescription not found")
     return presc
@@ -93,7 +94,7 @@ async def verify_prescription(
     prescription_id: str,
     update_data: dict,
     user_id: str = Header("unknown_staff", alias="x-user-id"),
-    x_tenant_id: str = Header(..., alias="x-tenant-id")
+    current_user: CurrentUser = Depends(get_current_user)
 ):
     """
     Allows staff/doctors to correct OCR mistakes and save a new version.
@@ -105,7 +106,7 @@ async def verify_prescription(
     update_data["verified_at"] = datetime.utcnow().isoformat()
     
     updated = PrescriptionService.update_prescription(
-        tenant_id=x_tenant_id,
+        tenant_id=current_user.tenant_id,
         prescription_id=prescription_id,
         update_data=update_data,
         user_id=user_id,
