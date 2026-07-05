@@ -201,6 +201,75 @@ def send_patient_classification_message(to_number: str, phone_number_id: str) ->
         logger.error(f"[send classification] Exception: {e}")
         return False
 
+def send_existing_profiles_message(to_number: str, phone_number_id: str, patients: list, profile_name: str = "") -> bool:
+    """Send a list of existing patient profiles found by phone number, plus 'Register New'."""
+    if not settings.WHATSAPP_TOKEN or not phone_number_id:
+        return False
+    
+    rows = []
+    for i, p in enumerate(patients[:9]):  # WhatsApp list max 10 rows, reserve 1 for 'New'
+        name = getattr(p, 'name', 'Patient')
+        gender = getattr(p, 'gender', '')
+        dob = str(getattr(p, 'dob', ''))
+        pid = str(getattr(p, 'id', ''))
+        desc = f"{gender}"
+        if dob:
+            desc += f" • DOB: {dob}"
+        rows.append({
+            "id": f"select_patient_{pid}",
+            "title": name[:24],
+            "description": desc[:72]
+        })
+    
+    # Always add a "Register New Patient" option at the end
+    rows.append({
+        "id": "patient_new",
+        "title": "➕ Register New Patient",
+        "description": "Create a new patient profile"
+    })
+    
+    count = len(patients)
+    payload = {
+        "messaging_product": "whatsapp",
+        "recipient_type": "individual",
+        "to": to_number,
+        "type": "interactive",
+        "interactive": {
+            "type": "list",
+            "header": {
+                "type": "text",
+                "text": f"Your Profiles ({count} found) 👤"
+            },
+            "body": {
+                "text": f"We found *{count} patient profile(s)* registered with your number.\n\nPlease select who you'd like to book for, or register a new patient."
+            },
+            "footer": {
+                "text": "Secure Patient Selection"
+            },
+            "action": {
+                "button": "Select Patient",
+                "sections": [
+                    {
+                        "title": "Patient Profiles",
+                        "rows": rows
+                    }
+                ]
+            }
+        }
+    }
+    url = f"https://graph.facebook.com/{WA_API_VERSION}/{phone_number_id}/messages"
+    try:
+        resp = _requests.post(
+            url,
+            headers={"Authorization": f"Bearer {settings.WHATSAPP_TOKEN}", "Content-Type": "application/json"},
+            json=payload, timeout=10,
+        )
+        _debug_log(f"[send profiles] TO={to_number} profiles={count} STATUS={resp.status_code}")
+        return resp.status_code == 200
+    except Exception as e:
+        logger.error(f"[send profiles] Exception: {e}")
+        return False
+
 def send_registration_flow_cta_message(to_number: str, phone_number_id: str, profile_name: str = "") -> bool:
     if not settings.WHATSAPP_TOKEN or not phone_number_id:
         return False
@@ -869,10 +938,34 @@ def process_whatsapp_message(body: Dict[Any, Any]):
                                     send_whatsapp_message(from_number, f"⬇️ Download your prescription here: {rx.image_url}", phone_number_id)
                                 else:
                                     send_whatsapp_message(from_number, "Prescription document not available.", phone_number_id)
+                            
+                            # ── Existing Patient Profile Selection ──────────────────────
+                            elif list_id.startswith("select_patient_"):
+                                patient_id = list_id.replace("select_patient_", "")
+                                from app.services.patient_service import PatientService
+                                patient = PatientService.get_patient(tenant_id, patient_id)
+                                if patient:
+                                    patient_name = patient.name
+                                    send_whatsapp_message(from_number, f"👤 Selected: *{patient_name}*\nLet's book an appointment!", phone_number_id)
+                                    send_flow_cta_message(from_number, phone_number_id, patient_name)
+                                else:
+                                    send_whatsapp_message(from_number, "Profile not found. Please try again.", phone_number_id)
+                                    send_patient_classification_message(from_number, phone_number_id)
+                            elif list_id == "patient_new":
+                                send_registration_flow_cta_message(from_number, phone_number_id, profile_name)
 
                         elif int_type == "button_reply":
                             button_id = interactive.get("button_reply", {}).get("id", "")
-                            if button_id in ("patient_existing", "patient_guest"):
+                            if button_id == "patient_existing":
+                                # Look up existing profiles by phone number
+                                from app.services.patient_service import PatientService
+                                patients = PatientService.get_patients_by_phone(tenant_id, from_number)
+                                if patients:
+                                    send_existing_profiles_message(from_number, phone_number_id, patients, profile_name)
+                                else:
+                                    send_whatsapp_message(from_number, "No existing profiles found with your number. Let's register you as a new patient! 📋", phone_number_id)
+                                    send_registration_flow_cta_message(from_number, phone_number_id, profile_name)
+                            elif button_id == "patient_guest":
                                 send_flow_cta_message(from_number, phone_number_id, profile_name)
                             elif button_id == "patient_new":
                                 send_registration_flow_cta_message(from_number, phone_number_id, profile_name)

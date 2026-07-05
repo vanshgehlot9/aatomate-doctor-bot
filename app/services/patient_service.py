@@ -33,3 +33,24 @@ class PatientService:
         if response.data:
             return [PatientInDB(**row) for row in response.data]
         return []
+
+    @staticmethod
+    def get_patients_by_phone(tenant_id: str, mobile_number: str) -> List[PatientInDB]:
+        """Find all patients registered under a given phone number."""
+        if not db: return []
+        
+        # Normalize: strip leading + and any spaces
+        clean = mobile_number.replace("+", "").replace(" ", "").replace("-", "")
+        
+        # Try exact match first, then partial match with last 10 digits
+        response = db.table("patients").select("*").eq("tenant_id", tenant_id).execute()
+        if not response.data:
+            return []
+        
+        matches = []
+        last10 = clean[-10:] if len(clean) >= 10 else clean
+        for row in response.data:
+            row_phone = (row.get("mobile_number") or "").replace("+", "").replace(" ", "").replace("-", "")
+            if row_phone == clean or row_phone.endswith(last10):
+                matches.append(PatientInDB(**row))
+        return matches
