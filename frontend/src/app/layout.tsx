@@ -9,6 +9,16 @@ const fontSans = Plus_Jakarta_Sans({ subsets: ["latin"], variable: "--font-sans"
 export const metadata: Metadata = {
   title: "Aatomate Medical OS",
   description: "Enterprise Medical SaaS Dashboard",
+  icons: {
+    icon: [
+      { url: '/favicon.ico', sizes: '32x32' },
+      { url: '/icon-192x192.png', sizes: '192x192', type: 'image/png' },
+    ],
+    apple: [
+      { url: '/apple-touch-icon.png' }
+    ],
+  },
+  manifest: '/manifest.webmanifest'
 };
 
 import Script from "next/script";
