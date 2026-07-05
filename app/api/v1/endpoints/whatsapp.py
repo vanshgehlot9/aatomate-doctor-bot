@@ -1370,19 +1370,18 @@ async def whatsapp_flow_endpoint(request: Request):
                 patient_id = "wa_" + "".join(filter(str.isdigit, patient_phone or "unknown"))
                 
                 try:
-                    from app.db.supabase import db as _db
-                    now = datetime.utcnow()
-                    _db.collection("tenants").document(tenant_id)\
-                       .collection("patients").document(patient_id)\
-                       .set({
-                           "name": patient_name,
-                           "mobile_number": patient_phone,
-                           "email": patient_email or None,
-                           "gender": patient_gender,
-                           "dob": patient_dob,
-                           "created_at": now,
-                           "updated_at": now,
-                       }, merge=True)
+                    from app.schemas.patient import PatientCreate
+                    from app.services.patient_service import PatientService
+                    patient_in = PatientCreate(
+                        id=patient_id,
+                        name=patient_name,
+                        mobile_number=patient_phone,
+                        email=patient_email or None,
+                        gender=patient_gender,
+                        dob=patient_dob
+                    )
+                    PatientService.create_patient(tenant_id, patient_in)
+
                     status_val = "registration_success"
                 except Exception as e:
                     logger.error(f"[flow] Error registering patient: {e}")
@@ -1440,30 +1439,32 @@ async def whatsapp_flow_endpoint(request: Request):
                     if created:
                         try:
                             from app.db.supabase import db as _db
-                            _db.collection("tenants").document(tenant_id)\
-                               .collection("appointments").document(created.id)\
-                               .update({
-                                   "patient_name":  patient_name,
-                                   "patient_phone": patient_phone,
-                                   "patient_email": data.get("email", ""),
-                               })
+                            from app.services.patient_service import PatientService
+                            from app.schemas.patient import PatientCreate
+                            
+                            # Update appointment with patient details
+                            if _db:
+                                _db.table("appointments").update({
+                                    "patient_name": patient_name,
+                                    "patient_phone": patient_phone,
+                                    "patient_email": data.get("email", ""),
+                                }).eq("tenant_id", tenant_id).eq("id", created.id).execute()
                                
-                            # Use None instead of empty string for email to satisfy EmailStr
+                            # Ensure patient exists
                             patient_email = data.get("email", "").strip() or None
-                            now = datetime.utcnow()
-                            _db.collection("tenants").document(tenant_id)\
-                               .collection("patients").document(patient_id)\
-                               .set({
-                                   "name": patient_name,
-                                   "mobile_number": patient_phone,
-                                   "email": patient_email,
-                                   "gender": "Unknown",
-                                   "dob": "1970-01-01",
-                                   "created_at": now,
-                                   "updated_at": now,
-                               }, merge=True)
-                        except Exception:
-                            pass  # non-critical
+                            existing_patient = PatientService.get_patient(tenant_id, patient_id)
+                            if not existing_patient:
+                                patient_in = PatientCreate(
+                                    id=patient_id,
+                                    name=patient_name,
+                                    mobile_number=patient_phone,
+                                    email=patient_email,
+                                    gender="Unknown",
+                                    dob="1970-01-01"
+                                )
+                                PatientService.create_patient(tenant_id, patient_in)
+                        except Exception as e:
+                            logger.error(f"Error updating appointment/patient: {e}")
 
                     status_val = "appointment_confirmed"
                 except Exception as e:
