@@ -47,6 +47,14 @@ class TenantService:
         return []
 
     @staticmethod
+    def delete_tenant(tenant_id: str) -> bool:
+        if not db: return False
+        
+        response = db.table("tenants").delete().eq("id", tenant_id).execute()
+        # Supposing successful delete returns data or simply no error
+        return True
+
+    @staticmethod
     def get_tenant_by_phone_number_id(phone_number_id: str) -> Optional[TenantInDB]:
         """
         Resolve a tenant by their WhatsApp Business Phone Number ID.

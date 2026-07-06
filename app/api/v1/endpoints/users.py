@@ -87,7 +87,10 @@ def get_users(current_user: CurrentUser = Depends(get_current_user)):
             return []
             
         # Filter by the authenticated user's tenantId — no cross-hospital data
-        response = db.table("users").select("*").eq("tenant_id", current_user.tenant_id).execute()
+        if current_user.role == "super_admin":
+            response = db.table("users").select("*").execute()
+        else:
+            response = db.table("users").select("*").eq("tenant_id", current_user.tenant_id).execute()
         
         users_list = []
         if response.data:
@@ -103,6 +106,58 @@ def get_users(current_user: CurrentUser = Depends(get_current_user)):
         return users_list
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to fetch users: {str(e)}")
+
+class UserUpdate(BaseModel):
+    name: Optional[str] = None
+    role: Optional[str] = None
+    tenant_id: Optional[str] = None
+
+@router.put("/{uid}", response_model=UserResponse)
+def update_user(uid: str, user_in: UserUpdate, current_user: CurrentUser = Depends(get_current_user)):
+    """
+    Update a user in Supabase Auth and database.
+    """
+    if current_user.role not in ("hospital_admin", "super_admin"):
+        raise HTTPException(status_code=403, detail="Not authorized to update users")
+    try:
+        if not db:
+            raise HTTPException(status_code=500, detail="Database not initialized")
+            
+        update_data = {k: v for k, v in user_in.model_dump().items() if v is not None}
+        if not update_data:
+            raise HTTPException(status_code=400, detail="No data provided to update")
+            
+        update_data["updated_at"] = datetime.utcnow().isoformat()
+        
+        # Update database
+        response = db.table("users").update(update_data).eq("id", uid).execute()
+        if not response.data:
+            raise HTTPException(status_code=404, detail="User not found")
+            
+        # Update Auth metadata if necessary (admin API)
+        # Note: changing tenant/role should ideally also update auth user_metadata
+        auth_update = {}
+        if "name" in update_data: auth_update["name"] = update_data["name"]
+        if "role" in update_data: auth_update["role"] = update_data["role"]
+        if "tenant_id" in update_data: 
+            auth_update["tenantId"] = update_data["tenant_id"]
+            auth_update["tenant_id"] = update_data["tenant_id"]
+            
+        if auth_update:
+            try:
+                db.auth.admin.update_user_by_id(uid, {"user_metadata": auth_update})
+            except Exception as e:
+                print(f"Failed to update auth metadata for {uid}: {e}")
+                
+        updated_user = response.data[0]
+        return UserResponse(
+            uid=updated_user["id"], 
+            email=updated_user["email"], 
+            role=updated_user["role"]
+        )
+    except Exception as e:
+        if isinstance(e, HTTPException): raise e
+        raise HTTPException(status_code=500, detail=f"Failed to update user: {str(e)}")
 
 @router.delete("/{uid}")
 def delete_user(uid: str, current_user: CurrentUser = Depends(get_current_user)):

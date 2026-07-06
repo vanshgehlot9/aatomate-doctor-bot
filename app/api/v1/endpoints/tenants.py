@@ -55,3 +55,23 @@ def get_all_tenants():
     List all tenants.
     """
     return TenantService.get_all_tenants()
+
+@router.put("/{tenant_id}", response_model=TenantInDB)
+def update_tenant(tenant_id: str, tenant_in: TenantUpdate):
+    """
+    Update tenant by ID.
+    """
+    tenant = TenantService.update_tenant(tenant_id, tenant_in)
+    if not tenant:
+        raise HTTPException(status_code=404, detail="Tenant not found")
+    return tenant
+
+@router.delete("/{tenant_id}")
+def delete_tenant(tenant_id: str):
+    """
+    Delete tenant by ID.
+    """
+    success = TenantService.delete_tenant(tenant_id)
+    if not success:
+        raise HTTPException(status_code=400, detail="Failed to delete tenant")
+    return {"message": "Tenant deleted successfully"}

@@ -34,11 +34,14 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(securit
         role = metadata.get("role", "user")
 
         if not tenant_id:
-            # Strictly enforce tenant isolation
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="User does not belong to any tenant."
-            )
+            if role == "super_admin":
+                tenant_id = "global"
+            else:
+                # Strictly enforce tenant isolation
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="User does not belong to any tenant."
+                )
 
         return CurrentUser(uid=uid, tenant_id=tenant_id, role=role, email=email)
         

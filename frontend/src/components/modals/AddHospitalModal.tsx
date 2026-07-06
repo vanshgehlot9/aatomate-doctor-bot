@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import React, { useState } from "react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import {
   Dialog,
@@ -19,7 +19,11 @@ import { Loader2, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
-export function AddHospitalModal() {
+interface AddHospitalModalProps {
+  customTrigger?: React.ReactNode;
+}
+
+export function AddHospitalModal({ customTrigger }: AddHospitalModalProps = {}) {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [hospitalName, setHospitalName] = useState("");
@@ -53,11 +57,23 @@ export function AddHospitalModal() {
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger className={cn(buttonVariants({ className: "gap-2" }))}>
-        <Plus className="w-4 h-4" />
-        Add Hospital
-      </DialogTrigger>
+    <>
+      {customTrigger ? (
+        // Render custom trigger outside Dialog to avoid nested <button> issue with base-ui
+        React.cloneElement(customTrigger as React.ReactElement<any>, {
+          onClick: (e: React.MouseEvent) => {
+            (customTrigger as React.ReactElement<any>).props.onClick?.(e);
+            setOpen(true);
+          }
+        })
+      ) : null}
+      <Dialog open={open} onOpenChange={setOpen}>
+        {!customTrigger && (
+          <DialogTrigger className={cn(buttonVariants({ className: "gap-2" }))}>
+            <Plus className="w-4 h-4" />
+            Add Hospital
+          </DialogTrigger>
+        )}
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>Create New Hospital</DialogTitle>
@@ -119,5 +135,6 @@ export function AddHospitalModal() {
         </form>
       </DialogContent>
     </Dialog>
+    </>
   );
 }

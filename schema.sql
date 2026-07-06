@@ -211,13 +211,39 @@ CREATE TABLE doctor_schedules (
 -- Doctor Holidays Table
 CREATE TABLE doctor_holidays (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    tenant_id UUID REFERENCES tenants(id) ON DELETE CASCADE,
     doctor_id UUID REFERENCES doctors(id) ON DELETE CASCADE,
-    date DATE NOT NULL,
-    holiday_type TEXT DEFAULT 'Full Day',
-    start_time TEXT,
-    end_time TEXT,
+    tenant_id UUID REFERENCES tenants(id) ON DELETE CASCADE,
+    start_date DATE NOT NULL,
+    end_date DATE NOT NULL,
     reason TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Subscriptions Table
+CREATE TABLE subscriptions (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_id UUID REFERENCES tenants(id) ON DELETE CASCADE,
+    plan_name TEXT NOT NULL,
+    monthly_price INTEGER NOT NULL,
+    setup_fee INTEGER NOT NULL,
+    status TEXT NOT NULL DEFAULT 'active',
+    billing_cycle TEXT NOT NULL DEFAULT 'monthly',
+    start_date TIMESTAMP WITH TIME ZONE NOT NULL,
+    renewal_date TIMESTAMP WITH TIME ZONE NOT NULL,
+    payment_reference TEXT NOT NULL UNIQUE,
+    order_id TEXT NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Tenant Settings Table
+CREATE TABLE tenant_settings (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_id UUID REFERENCES tenants(id) ON DELETE CASCADE UNIQUE,
+    setup_completed BOOLEAN DEFAULT false,
+    whatsapp_connected BOOLEAN DEFAULT false,
+    notification_preferences JSONB DEFAULT '{"email": true, "sms": false, "whatsapp": true}'::jsonb,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );

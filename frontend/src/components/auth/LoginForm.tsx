@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,7 @@ import { Loader2, ShieldCheck, Activity } from "lucide-react";
 import { toast } from "sonner";
 import { Checkbox } from "@/components/ui/checkbox";
 import Image from "next/image";
+import { useAuth } from "@/providers/AuthProvider";
 
 export function LoginForm() {
   const [email, setEmail] = useState("");
@@ -82,17 +83,29 @@ export function LoginForm() {
     }
   };
 
+  const { userProfile } = useAuth();
+
+  useEffect(() => {
+    if (userProfile) {
+      setSessionCookie(userProfile.role);
+      handleRedirect(userProfile.role);
+    }
+  }, [userProfile]);
+
   const onGoogleLogin = async () => {
     setLoading(true);
     try {
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/login`
+        }
       });
       
       if (error) throw error;
       
       // The OAuth login redirects, so we don't handle the user profile fetching here immediately.
-      // It is handled by AuthProvider on successful return from Google.
+      // It is handled by AuthProvider and the useEffect hook above on successful return from Google.
     } catch (error: any) {
       toast.error(error.message || "Failed to login with Google");
       setLoading(false);

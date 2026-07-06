@@ -1,13 +1,14 @@
 import { RoleGuard } from "@/components/layout/RoleGuard";
-import { DashboardLayout } from "@/components/layout/DashboardLayout";
+import { SuperAdminLayout as Layout } from "@/components/layout/SuperAdminLayout";
 import { Role } from "@/lib/rbac";
 
 export default function SuperAdminLayout({ children }: { children: React.ReactNode }) {
   return (
     <RoleGuard allowedRoles={[Role.SUPER_ADMIN]}>
-      <DashboardLayout>
+      <Layout>
         {children}
-      </DashboardLayout>
+      </Layout>
     </RoleGuard>
   );
 }
+

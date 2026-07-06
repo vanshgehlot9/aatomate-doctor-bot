@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import {
   Dialog,
@@ -28,9 +28,10 @@ interface AddUserModalProps {
   fixedRole?: Role;
   fixedTenantId?: string;
   triggerText?: string;
+  customTrigger?: React.ReactNode;
 }
 
-export function AddUserModal({ tenants = [], fixedRole, fixedTenantId, triggerText = "Add User" }: AddUserModalProps) {
+export function AddUserModal({ tenants = [], fixedRole, fixedTenantId, triggerText = "Add User", customTrigger }: AddUserModalProps) {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -45,58 +46,39 @@ export function AddUserModal({ tenants = [], fixedRole, fixedTenantId, triggerTe
   const [loading, setLoading] = useState(false);
   const queryClient = useQueryClient();
 
+  const [inviteLink, setInviteLink] = useState<string | null>(null);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     try {
-      // 1. Create the user on the backend
-      await createUser({
+      const metadata: any = { name };
+      if (isDoctor) {
+        metadata.specialization = specialization;
+        metadata.experience = experience;
+        metadata.fee = fee;
+      }
+
+      // Import the action dynamically to avoid Next.js client-side errors
+      const { createInvitation } = await import("@/app/invite/actions");
+      
+      const res = await createInvitation({
+        tenantId,
         email,
-        name,
-        role,
-        tenant_id: tenantId,
+        role: isDoctor ? Role.DOCTOR : role,
+        metadata
       });
 
-      // 2. Trigger Supabase Password Reset Email
-      await supabase.auth.resetPasswordForEmail(email);
-
-      // 3. If role is doctor, we also create the Doctor record
-      if (role === Role.DOCTOR) {
-         await createDoctor({
-            name,
-            specialization,
-            qualifications: ["MBBS"], // Basic default
-            experience_years: experience,
-            languages: ["English"],
-            consultation_fee: fee,
-            availability_schedule: { "monday": ["09:00-17:00"] },
-            is_active: true,
-            tenant_id: tenantId
-         });
-         queryClient.invalidateQueries({ queryKey: ["doctors"] });
+      if (res.error) {
+        throw new Error(res.error);
       }
 
-      toast.success("User created! An email has been sent to them to set their password.");
-      setOpen(false);
-      setName("");
-      setEmail("");
-      setSpecialization("");
-      setExperience(0);
-      setFee(500);
-      if (!fixedRole) setRole("");
-      if (!fixedTenantId) setTenantId("");
+      const generatedLink = `${window.location.origin}/invite/${res.token}`;
+      setInviteLink(generatedLink);
+      toast.success("Invitation generated successfully!");
+      
     } catch (error: any) {
-      let errorMessage = "Failed to create user";
-      if (error.response?.data?.detail) {
-        if (typeof error.response.data.detail === "string") {
-          errorMessage = error.response.data.detail;
-        } else if (Array.isArray(error.response.data.detail)) {
-          errorMessage = error.response.data.detail.map((e: any) => e.msg).join(", ");
-        }
-      } else if (error.message) {
-        errorMessage = error.message;
-      }
-      toast.error(errorMessage);
+      toast.error(error.message || "Failed to generate invitation");
     } finally {
       setLoading(false);
     }
@@ -105,18 +87,66 @@ export function AddUserModal({ tenants = [], fixedRole, fixedTenantId, triggerTe
   const isDoctor = role === Role.DOCTOR || fixedRole === Role.DOCTOR;
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger className={cn(buttonVariants({ className: "gap-2" }))}>
-        <UserPlus className="w-4 h-4" />
-        {triggerText}
-      </DialogTrigger>
+    <>
+      {customTrigger ? (
+        // Render custom trigger outside Dialog to avoid nested <button> issue with base-ui
+        React.cloneElement(customTrigger as React.ReactElement<any>, {
+          onClick: (e: React.MouseEvent) => {
+            (customTrigger as React.ReactElement<any>).props.onClick?.(e);
+            setOpen(true);
+          }
+        })
+      ) : null}
+      <Dialog open={open} onOpenChange={setOpen}>
+        {!customTrigger && (
+          <DialogTrigger className={cn(buttonVariants({ className: "gap-2" }))}>
+            <UserPlus className="w-4 h-4" />
+            {triggerText}
+          </DialogTrigger>
+        )}
       <DialogContent className="sm:max-w-[425px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Create New User</DialogTitle>
+          <DialogTitle>{inviteLink ? "Invitation Created" : "Create New User"}</DialogTitle>
           <DialogDescription>
-            Register a new user. They will receive an email to set their password.
+            {inviteLink 
+              ? "The invitation link has been generated. Share this with the user."
+              : "Register a new user. You will receive an invite link to send them."}
           </DialogDescription>
         </DialogHeader>
+        
+        {inviteLink ? (
+          <div className="space-y-4 pt-4">
+            <div className="p-3 bg-muted rounded-md break-all text-sm font-mono text-muted-foreground border">
+              {inviteLink}
+            </div>
+            <div className="flex gap-2">
+              <Button 
+                className="w-full"
+                onClick={() => {
+                  navigator.clipboard.writeText(inviteLink);
+                  toast.success("Link copied to clipboard!");
+                }}
+              >
+                Copy Link
+              </Button>
+            </div>
+            <DialogFooter className="pt-4">
+              <Button type="button" variant="outline" onClick={() => {
+                setOpen(false);
+                setTimeout(() => setInviteLink(null), 300);
+                setName("");
+                setEmail("");
+                setSpecialization("");
+                setExperience(0);
+                setFee(500);
+                if (!fixedRole) setRole("");
+                if (!fixedTenantId) setTenantId("");
+              }}>
+                Close
+              </Button>
+            </DialogFooter>
+          </div>
+        ) : (
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="name">Full Name</Label>
@@ -206,11 +236,13 @@ export function AddUserModal({ tenants = [], fixedRole, fixedTenantId, triggerTe
             </Button>
             <Button type="submit" disabled={loading || !name || !email || !role || !tenantId || (isDoctor && (!specialization))}>
               {loading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
-              Create User
+              Generate Invite Link
             </Button>
           </DialogFooter>
         </form>
+        )}
       </DialogContent>
     </Dialog>
+    </>
   );
 }

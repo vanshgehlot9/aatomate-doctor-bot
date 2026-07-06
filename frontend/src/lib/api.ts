@@ -67,12 +67,24 @@ export const createTenant = async (data: Partial<Tenant>): Promise<Tenant> => {
   return (await api.post("/tenants/", data)).data;
 };
 
+export const updateTenant = async (id: string, data: Partial<Tenant>): Promise<Tenant> => {
+  return (await api.put(`/tenants/${id}`, data)).data;
+};
+
+export const deleteTenant = async (id: string): Promise<void> => {
+  await api.delete(`/tenants/${id}`);
+};
+
 export const getUsers = async (): Promise<any[]> => {
   return (await api.get("/users/")).data;
 };
 
 export const createUser = async (data: { email: string; name: string; role: string; tenant_id?: string; phone?: string }): Promise<any> => {
   return (await api.post("/users/", data)).data;
+};
+
+export const updateUser = async (uid: string, data: { name?: string; role?: string; tenant_id?: string }): Promise<any> => {
+  return (await api.put(`/users/${uid}`, data)).data;
 };
 
 export const createDoctor = async (data: Partial<Doctor>): Promise<Doctor> => {
