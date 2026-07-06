@@ -68,8 +68,8 @@ function ConsentContent() {
       // @ts-ignore
       const { data, error } = await supabase.auth.oauth.approveAuthorization(authorizationId);
       if (error) throw error;
-      if (data?.url) {
-        window.location.href = data.url;
+      if ((data as any)?.url) {
+        window.location.href = (data as any).url;
       } else if (data?.redirect_to) {
         window.location.href = data.redirect_to;
       } else {
@@ -90,8 +90,8 @@ function ConsentContent() {
       // @ts-ignore
       const { data, error } = await supabase.auth.oauth.denyAuthorization(authorizationId);
       if (error) throw error;
-      if (data?.url) {
-        window.location.href = data.url;
+      if ((data as any)?.url) {
+        window.location.href = (data as any).url;
       } else if (data?.redirect_to) {
         window.location.href = data.redirect_to;
       } else {
