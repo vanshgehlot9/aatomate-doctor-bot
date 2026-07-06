@@ -68,10 +68,11 @@ function ConsentContent() {
       // @ts-ignore
       const { data, error } = await supabase.auth.oauth.approveAuthorization(authorizationId);
       if (error) throw error;
-      if ((data as any)?.url) {
-        window.location.href = (data as any).url;
-      } else if (data?.redirect_to) {
-        window.location.href = data.redirect_to;
+      const resData = data as any;
+      if (resData?.url) {
+        window.location.href = resData.url;
+      } else if (resData?.redirect_to) {
+        window.location.href = resData.redirect_to;
       } else {
         toast.success("Authorization approved successfully!");
       }
@@ -90,10 +91,11 @@ function ConsentContent() {
       // @ts-ignore
       const { data, error } = await supabase.auth.oauth.denyAuthorization(authorizationId);
       if (error) throw error;
-      if ((data as any)?.url) {
-        window.location.href = (data as any).url;
-      } else if (data?.redirect_to) {
-        window.location.href = data.redirect_to;
+      const resData = data as any;
+      if (resData?.url) {
+        window.location.href = resData.url;
+      } else if (resData?.redirect_to) {
+        window.location.href = resData.redirect_to;
       } else {
         toast.info("Authorization denied.");
       }
