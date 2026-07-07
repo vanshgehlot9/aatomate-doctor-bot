@@ -821,13 +821,13 @@ def process_whatsapp_message(body: Dict[Any, Any]):
                         if not is_greeting and len(text_lower) > 2:
                             if is_question:
                                 import threading
-                                patient_id = str(uuid.uuid5(uuid.NAMESPACE_OID, \"wa_\" + \"\".join(filter(str.isdigit, from_number))))
+                                patient_id = str(uuid.uuid5(uuid.NAMESPACE_OID, "wa_" + "".join(filter(str.isdigit, from_number))))
                                 threading.Thread(
                                     target=_handle_medicine_qa,
                                     args=(patient_id, text_body, from_number, phone_number_id, tenant_id)
                                 ).start()
                             else:
-                                patient_id = str(uuid.uuid5(uuid.NAMESPACE_OID, \"wa_\" + \"\".join(filter(str.isdigit, from_number))))
+                                patient_id = str(uuid.uuid5(uuid.NAMESPACE_OID, "wa_" + "".join(filter(str.isdigit, from_number))))
                                 from app.services.report_service import ReportService
                                 search_results = ReportService.search_reports(
                                     tenant_id, patient_id, text_body, limit=5
@@ -880,7 +880,7 @@ def process_whatsapp_message(body: Dict[Any, Any]):
                                 send_whatsapp_message(from_number,
                                     "📸 Please send your report as a *photo* or *PDF document*. I'll analyse it with AI instantly!", phone_number_id)
                             elif list_id == "report_timeline":
-                                patient_id = str(uuid.uuid5(uuid.NAMESPACE_OID, \"wa_\" + \"\".join(filter(str.isdigit, from_number))))
+                                patient_id = str(uuid.uuid5(uuid.NAMESPACE_OID, "wa_" + "".join(filter(str.isdigit, from_number))))
                                 from app.services.report_service import ReportService
                                 reports = ReportService.get_patient_reports(tenant_id, patient_id, limit=20)
                                 timeline_text = ReportService.format_timeline_for_whatsapp(reports)
@@ -891,22 +891,22 @@ def process_whatsapp_message(body: Dict[Any, Any]):
                             
                             # ── Prescriptions Handlers ─────────────────────────────────────
                             elif list_id == "rx_active":
-                                patient_id = str(uuid.uuid5(uuid.NAMESPACE_OID, \"wa_\" + \"\".join(filter(str.isdigit, from_number))))
+                                patient_id = str(uuid.uuid5(uuid.NAMESPACE_OID, "wa_" + "".join(filter(str.isdigit, from_number))))
                                 from app.services.prescription_service import PrescriptionService
                                 active = PrescriptionService.get_active_prescriptions(tenant_id, patient_id)
                                 _send_dynamic_prescription_list(from_number, phone_number_id, active, "rx_view", "Active Prescriptions", "Select to view medicines.")
                             elif list_id == "rx_previous":
-                                patient_id = str(uuid.uuid5(uuid.NAMESPACE_OID, \"wa_\" + \"\".join(filter(str.isdigit, from_number))))
+                                patient_id = str(uuid.uuid5(uuid.NAMESPACE_OID, "wa_" + "".join(filter(str.isdigit, from_number))))
                                 from app.services.prescription_service import PrescriptionService
                                 prev = PrescriptionService.get_patient_prescriptions(tenant_id, patient_id)
                                 _send_dynamic_prescription_list(from_number, phone_number_id, prev, "rx_view", "Previous Prescriptions", "Select to view past history.")
                             elif list_id == "rx_download":
-                                patient_id = str(uuid.uuid5(uuid.NAMESPACE_OID, \"wa_\" + \"\".join(filter(str.isdigit, from_number))))
+                                patient_id = str(uuid.uuid5(uuid.NAMESPACE_OID, "wa_" + "".join(filter(str.isdigit, from_number))))
                                 from app.services.prescription_service import PrescriptionService
                                 all_rx = PrescriptionService.get_patient_prescriptions(tenant_id, patient_id)
                                 _send_dynamic_prescription_list(from_number, phone_number_id, all_rx, "rx_down", "Download Prescription", "Select to download PDF.")
                             elif list_id == "rx_schedule":
-                                patient_id = str(uuid.uuid5(uuid.NAMESPACE_OID, \"wa_\" + \"\".join(filter(str.isdigit, from_number))))
+                                patient_id = str(uuid.uuid5(uuid.NAMESPACE_OID, "wa_" + "".join(filter(str.isdigit, from_number))))
                                 from app.services.prescription_service import PrescriptionService
                                 sched = PrescriptionService.get_medicine_schedule(tenant_id, patient_id)
                                 lines = ["⏰ *Today's Medicines*\n"]
@@ -971,7 +971,7 @@ def process_whatsapp_message(body: Dict[Any, Any]):
                             elif button_id == "patient_new":
                                 send_registration_flow_cta_message(from_number, phone_number_id, profile_name)
                             elif button_id == "report_timeline":
-                                patient_id = str(uuid.uuid5(uuid.NAMESPACE_OID, \"wa_\" + \"\".join(filter(str.isdigit, from_number))))
+                                patient_id = str(uuid.uuid5(uuid.NAMESPACE_OID, "wa_" + "".join(filter(str.isdigit, from_number))))
                                 from app.services.report_service import ReportService
                                 reports = ReportService.get_patient_reports(tenant_id, patient_id, limit=20)
                                 timeline_text = ReportService.format_timeline_for_whatsapp(reports)
@@ -1006,7 +1006,7 @@ def process_whatsapp_message(body: Dict[Any, Any]):
                         caption = media_obj.get("caption", "").lower()
                         
                         # Check if user is in a report-upload context (caption hint or last msg state)
-                        patient_id = str(uuid.uuid5(uuid.NAMESPACE_OID, \"wa_\" + \"\".join(filter(str.isdigit, from_number))))
+                        patient_id = str(uuid.uuid5(uuid.NAMESPACE_OID, "wa_" + "".join(filter(str.isdigit, from_number))))
                         
                         if media_id:
                             send_whatsapp_message(from_number, "⏳ Processing your report...", phone_number_id)
@@ -1393,7 +1393,7 @@ async def whatsapp_flow_endpoint(request: Request):
                 patient_gender = data.get("gender", "")
                 patient_dob = data.get("dob", "")
                 
-                patient_id = str(uuid.uuid5(uuid.NAMESPACE_OID, \"wa_\" + \"\".join(filter(str.isdigit, patient_phone or \"unknown\"))))
+                patient_id = str(uuid.uuid5(uuid.NAMESPACE_OID, "wa_" + "".join(filter(str.isdigit, patient_phone or "unknown"))))
                 
                 try:
                     from app.schemas.patient import PatientCreate
@@ -1443,7 +1443,7 @@ async def whatsapp_flow_endpoint(request: Request):
                     patient_name  = data.get("name", "")
 
                     # Derive a stable patient_id from phone (strip non-digits)
-                    patient_id = str(uuid.uuid5(uuid.NAMESPACE_OID, \"wa_\" + \"\".join(filter(str.isdigit, patient_phone or \"unknown\"))))
+                    patient_id = str(uuid.uuid5(uuid.NAMESPACE_OID, "wa_" + "".join(filter(str.isdigit, patient_phone or "unknown"))))
 
                     # Calculate end time (30-minute slots)
                     t_obj     = datetime.strptime(time_str, "%H:%M")
