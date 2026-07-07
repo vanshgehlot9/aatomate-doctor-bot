@@ -19,7 +19,7 @@ class PatientBase(BaseModel):
     current_medications: List[str] = []
 
 class PatientCreate(PatientBase):
-    pass
+    id: Optional[str] = None
 
 class PatientUpdate(BaseModel):
     name: Optional[str] = None

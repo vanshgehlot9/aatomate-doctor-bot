@@ -19,7 +19,7 @@ class PatientService:
     def create_patient(tenant_id: str, patient: PatientCreate) -> Optional[PatientInDB]:
         if not db: return None
         
-        patient_data = patient.model_dump()
+        patient_data = patient.model_dump(exclude_none=True)
         patient_data["dob"] = str(patient_data["dob"])
         patient_data["tenant_id"] = tenant_id
         
