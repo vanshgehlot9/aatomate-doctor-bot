@@ -99,7 +99,7 @@ def send_flow_cta_message(to_number: str, phone_number_id: str, profile_name: st
         logger.error("[send CTA] Missing token or phone_number_id")
         return False
         
-    flow_id = os.environ.get("WHATSAPP_FLOW_ID", "1569884864659929")
+    flow_id = os.environ.get("WHATSAPP_FLOW_ID", "1044794504647107")
     
     # Compact state payload serialized into URL-Safe Base64 flow_token
     state = {"p": to_number, "n": profile_name[:30], "f": "clinic"}
@@ -275,7 +275,7 @@ def send_registration_flow_cta_message(to_number: str, phone_number_id: str, pro
     if not settings.WHATSAPP_TOKEN or not phone_number_id:
         return False
         
-    flow_id = os.environ.get("WHATSAPP_REGISTRATION_FLOW_ID", "1336906358510282")
+    flow_id = os.environ.get("WHATSAPP_REGISTRATION_FLOW_ID", "1637200917949908")
     
     state = {"p": to_number, "n": profile_name[:30], "f": "register"}
     import json, base64
