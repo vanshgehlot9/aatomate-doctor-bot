@@ -1450,6 +1450,23 @@ async def whatsapp_flow_endpoint(request: Request):
                     end_obj   = t_obj + timedelta(minutes=30)
                     end_str   = end_obj.strftime("%H:%M")
 
+                    # Ensure patient exists BEFORE creating the appointment
+                    from app.services.patient_service import PatientService
+                    from app.schemas.patient import PatientCreate
+                    
+                    patient_email = data.get("email", "").strip() or None
+                    existing_patient = PatientService.get_patient(tenant_id, patient_id)
+                    if not existing_patient:
+                        patient_in = PatientCreate(
+                            id=patient_id,
+                            name=patient_name,
+                            mobile_number=patient_phone,
+                            email=patient_email,
+                            gender="Unknown",
+                            dob="1970-01-01"
+                        )
+                        PatientService.create_patient(tenant_id, patient_in)
+
                     appt_in = AppointmentCreate(
                         patient_id=patient_id,
                         doctor_id=data.get("doctor", ""),
@@ -1461,13 +1478,11 @@ async def whatsapp_flow_endpoint(request: Request):
                     )
                     created = AppointmentService.create_appointment(tenant_id, appt_in)
 
-                    # Also store the patient's display info as metadata on the appointment doc, and ensure the patient exists
+                    # Also store the patient's display info as metadata on the appointment doc
                     if created:
                         try:
                             from app.db.supabase import db as _db
                             from app.db.retry import with_retry
-                            from app.services.patient_service import PatientService
-                            from app.schemas.patient import PatientCreate
                             
                             # Update appointment with patient details
                             if _db:
@@ -1476,22 +1491,9 @@ async def whatsapp_flow_endpoint(request: Request):
                                     "patient_phone": patient_phone,
                                     "patient_email": data.get("email", ""),
                                 }).eq("tenant_id", tenant_id).eq("id", created.id).execute())()
-                               
-                            # Ensure patient exists
-                            patient_email = data.get("email", "").strip() or None
-                            existing_patient = PatientService.get_patient(tenant_id, patient_id)
-                            if not existing_patient:
-                                patient_in = PatientCreate(
-                                    id=patient_id,
-                                    name=patient_name,
-                                    mobile_number=patient_phone,
-                                    email=patient_email,
-                                    gender="Unknown",
-                                    dob="1970-01-01"
-                                )
-                                PatientService.create_patient(tenant_id, patient_in)
                         except Exception as e:
-                            logger.error(f"Error updating appointment/patient: {e}")
+                            logger.error(f"Error updating appointment with patient details: {e}")
+
 
                     status_val = "appointment_confirmed"
                 except Exception as e:
