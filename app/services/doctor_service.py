@@ -13,6 +13,14 @@ class DoctorService:
         return None
 
     @staticmethod
+    def get_doctor_by_id_global(doctor_id: str) -> Optional[DoctorInDB]:
+        if not db: return None
+        response = db.table("doctors").select("*").eq("id", doctor_id).execute()
+        if response.data:
+            return DoctorInDB(**response.data[0])
+        return None
+
+    @staticmethod
     def create_doctor(tenant_id: str, doctor: DoctorCreate) -> Optional[DoctorInDB]:
         if not db: return None
         
@@ -29,6 +37,16 @@ class DoctorService:
         if not db: return []
         
         response = db.table("doctors").select("*").eq("tenant_id", tenant_id).execute()
+        if response.data:
+            return [DoctorInDB(**row) for row in response.data]
+        return []
+
+    @staticmethod
+    def get_all_global_doctors() -> List[DoctorInDB]:
+        """Fetch all doctors across all tenants (for global aggregator bots)"""
+        if not db: return []
+        
+        response = db.table("doctors").select("*").execute()
         if response.data:
             return [DoctorInDB(**row) for row in response.data]
         return []

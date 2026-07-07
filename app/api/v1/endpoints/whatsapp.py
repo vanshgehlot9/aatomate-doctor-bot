@@ -1189,7 +1189,7 @@ async def whatsapp_flow_endpoint(request: Request):
                 },
             }
         else:
-            doctors = DoctorService.get_all_doctors(tenant_id)
+            doctors = DoctorService.get_all_global_doctors()
             specialties_set = set(doc.specialization for doc in doctors if doc.specialization)
             if not specialties_set:
                 specialties_set = {"General"}
@@ -1208,11 +1208,32 @@ async def whatsapp_flow_endpoint(request: Request):
     elif action == "data_exchange":
         trigger = data.get("trigger", "")
 
+        # In aggregator mode, if a doctor is selected, we override the bot's tenant_id
+        # with the doctor's specific tenant_id so appointments/schedules route to the correct hospital.
+        _doc_id = data.get("doctor", "")
+        if _doc_id:
+            _doc = DoctorService.get_doctor_by_id_global(_doc_id)
+            if _doc:
+                tenant_id = _doc.tenant_id
+
         if screen == "DOCTOR_SELECTION":
             if trigger == "specialty_selected":
                 specialty = data.get("specialty", "")
-                doctors = DoctorService.get_all_doctors(tenant_id)
-                available = [{"id": d.id, "title": f"Dr. {d.name}"} for d in doctors if d.specialization == specialty]
+                doctors = DoctorService.get_all_global_doctors()
+                
+                from app.services.tenant_service import TenantService as _TS
+                tenants = _TS.get_all_tenants()
+                tenant_map = {t.id: t.hospital_name for t in tenants}
+                
+                available = []
+                for d in doctors:
+                    if d.specialization == specialty:
+                        hospital = tenant_map.get(d.tenant_id, "Unknown Hospital")
+                        available.append({
+                            "id": d.id, 
+                            "title": f"Dr. {d.name}"[:24],
+                            "description": hospital[:72]
+                        })
                 
                 specialties_set = set(doc.specialization for doc in doctors if doc.specialization)
                 if not specialties_set:
