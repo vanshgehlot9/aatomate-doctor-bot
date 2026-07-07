@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { UserProfile, Role } from "@/lib/rbac";
+import { UserProfile, Role, parseUserProfile, getRoleDashboardPath } from "@/lib/rbac";
 import { Loader2, ShieldCheck, Activity } from "lucide-react";
 import { toast } from "sonner";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -19,20 +19,11 @@ export function LoginForm() {
   const [loading, setLoading] = useState(false);
   const router = useRouter();
 
-  const handleRedirect = (role: Role) => {
-    switch (role) {
-      case Role.SUPER_ADMIN:
-        router.push("/super-admin");
-        break;
-      case Role.HOSPITAL_ADMIN:
-        router.push("/admin");
-        break;
-      case Role.DOCTOR:
-        router.push("/doctor");
-        break;
-      default:
-        router.push("/staff");
-    }
+  const handleRedirect = (profile: UserProfile) => {
+    // Always redirect to the active role's dashboard
+    // If user has multiple roles, the Role Switcher in the topbar handles switching
+    const dashboardPath = getRoleDashboardPath(profile.activeRole);
+    router.push(dashboardPath);
   };
 
   const setSessionCookie = (role: Role) => {
@@ -61,17 +52,15 @@ export function LoginForm() {
             .single();
             
         if (userDoc && !dbError) {
-          const profile: UserProfile = {
-              uid: userDoc.id,
-              email: userDoc.email,
-              name: userDoc.name,
-              role: userDoc.role as Role,
-              tenantId: userDoc.tenant_id,
-              hospitalId: userDoc.tenant_id
-          };
+          const profile = parseUserProfile(userDoc);
+
+          // Persist active role and tenant
+          localStorage.setItem("tenantId", profile.tenantId);
+          localStorage.setItem("activeRole", profile.activeRole);
+
           toast.success("Login successful!");
-          setSessionCookie(profile.role);
-          handleRedirect(profile.role);
+          setSessionCookie(profile.activeRole);
+          handleRedirect(profile);
         } else {
           toast.error("User profile not found. Please contact support.");
         }
@@ -87,8 +76,8 @@ export function LoginForm() {
 
   useEffect(() => {
     if (userProfile) {
-      setSessionCookie(userProfile.role);
-      handleRedirect(userProfile.role);
+      setSessionCookie(userProfile.activeRole);
+      handleRedirect(userProfile);
     }
   }, [userProfile]);
 

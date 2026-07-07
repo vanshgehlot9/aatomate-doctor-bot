@@ -24,6 +24,13 @@ api.interceptors.request.use(async (config) => {
         config.headers["x-tenant-id"] = tenantId;
       }
     }
+    // Send the active role with every request for backend enforcement
+    if (!config.headers["x-active-role"]) {
+      const activeRole = localStorage.getItem("activeRole");
+      if (activeRole) {
+        config.headers["x-active-role"] = activeRole;
+      }
+    }
   }
 
   return config;
@@ -79,12 +86,21 @@ export const getUsers = async (): Promise<any[]> => {
   return (await api.get("/users/")).data;
 };
 
-export const createUser = async (data: { email: string; name: string; role: string; tenant_id?: string; phone?: string }): Promise<any> => {
+export const createUser = async (data: { email: string; name: string; role?: string; roles?: string[]; tenant_id?: string; phone?: string }): Promise<any> => {
   return (await api.post("/users/", data)).data;
 };
 
-export const updateUser = async (uid: string, data: { name?: string; role?: string; tenant_id?: string }): Promise<any> => {
+export const updateUser = async (uid: string, data: { name?: string; role?: string; roles?: string[]; tenant_id?: string }): Promise<any> => {
   return (await api.put(`/users/${uid}`, data)).data;
+};
+
+// --- Role Switching ---
+export const switchActiveRole = async (role: string): Promise<any> => {
+  return (await api.put("/users/me/active-role", { role })).data;
+};
+
+export const getCurrentUserProfile = async (): Promise<any> => {
+  return (await api.get("/users/me")).data;
 };
 
 export const createDoctor = async (data: Partial<Doctor>): Promise<Doctor> => {

@@ -3,29 +3,14 @@
 import Link from "next/link";
 import { ShieldAlert, ArrowLeft } from "lucide-react";
 import { useAuth } from "@/providers/AuthProvider";
-import { Role } from "@/lib/rbac";
+import { getRoleDashboardPath, getRoleDisplayName } from "@/lib/rbac";
 
 export default function UnauthorizedPage() {
   const { userProfile } = useAuth();
 
   const getDashboardLink = () => {
-    switch (userProfile?.role) {
-      case Role.SUPER_ADMIN:
-        return "/super-admin";
-      case Role.HOSPITAL_ADMIN:
-        return "/admin";
-      case Role.DOCTOR:
-        return "/doctor";
-      case Role.RECEPTIONIST:
-      case Role.NURSE:
-      case Role.LAB_TECHNICIAN:
-      case Role.PHARMACIST:
-      case Role.BILLING_EXECUTIVE:
-      case Role.STAFF:
-        return "/staff";
-      default:
-        return "/login";
-    }
+    if (!userProfile) return "/login";
+    return getRoleDashboardPath(userProfile.activeRole);
   };
 
   return (
@@ -40,7 +25,7 @@ export default function UnauthorizedPage() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-foreground">Access Denied</h1>
           <p className="text-muted-foreground mt-2">
-            You do not have the required permissions to view this page. Your current role is <strong className="text-foreground capitalize">{userProfile?.role?.replace("_", " ")}</strong>.
+            You do not have the required permissions to view this page. Your current role is <strong className="text-foreground">{userProfile ? getRoleDisplayName(userProfile.activeRole) : "Unknown"}</strong>.
           </p>
         </div>
 

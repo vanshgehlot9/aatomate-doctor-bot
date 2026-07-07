@@ -25,8 +25,8 @@ export default function SuperAdminDashboard() {
   const totalUsers = users?.length || 0;
   
   // Calculate roles
-  const superAdmins = users?.filter(u => u.role === Role.SUPER_ADMIN).length || 0;
-  const hospitalAdmins = users?.filter(u => u.role === Role.HOSPITAL_ADMIN).length || 0;
+  const superAdmins = users?.filter(u => u.roles?.includes(Role.SUPER_ADMIN) || u.role === Role.SUPER_ADMIN).length || 0;
+  const hospitalAdmins = users?.filter(u => u.roles?.includes(Role.HOSPITAL_ADMIN) || u.role === Role.HOSPITAL_ADMIN).length || 0;
 
   // Recent hospitals (top 5)
   const recentHospitals = tenants?.slice(0, 5) || [];

@@ -115,6 +115,8 @@ async function completeInvitationFlow(adminClient: any, userId: string, invitati
       name: invitation.metadata.name,
       email: invitation.email,
       role: invitation.role,
+      roles: [invitation.role],
+      active_role: invitation.role,
     });
 
   if (userError) throw userError;
@@ -171,7 +173,9 @@ export async function acceptInvitationWithEmail(token: string, password: string)
       email_confirm: true,
       user_metadata: {
         full_name: invitation.metadata.name,
-        role: invitation.role
+        role: invitation.role,
+        roles: [invitation.role],
+        activeRole: invitation.role
       }
     });
 
@@ -217,7 +221,12 @@ export async function acceptInvitationWithGoogle(token: string, userId: string, 
 
     // 3. Update Auth User metadata
     await adminClient.auth.admin.updateUserById(userId, {
-      user_metadata: { full_name: invitation.metadata.name, role: invitation.role }
+      user_metadata: { 
+        full_name: invitation.metadata.name, 
+        role: invitation.role,
+        roles: [invitation.role],
+        activeRole: invitation.role
+      }
     });
 
     // 4. Complete the flow

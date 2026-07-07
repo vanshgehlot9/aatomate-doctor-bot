@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Role } from "@/lib/rbac";
+import { Role, getRoleDisplayName } from "@/lib/rbac";
 import { supabase } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
 import {
@@ -27,6 +27,7 @@ import { useQuery } from "@tanstack/react-query";
 import { getTenants } from "@/lib/api";
 import { motion } from "framer-motion";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { MobileRoleSwitcher } from "./RoleSwitcher";
 
 interface SidebarItem {
   name: string;
@@ -93,7 +94,8 @@ const getNavigationByRole = (role: Role): SidebarItem[] => {
 
 export function SidebarContent({ userProfile, onNavigate }: { userProfile: UserProfile, onNavigate?: () => void }) {
   const pathname = usePathname();
-  const navigation = getNavigationByRole(userProfile.role);
+  // Use activeRole for navigation — this is what changes when the user switches roles
+  const navigation = getNavigationByRole(userProfile.activeRole);
 
   const { data: tenants } = useQuery({
     queryKey: ["tenants"],
@@ -105,6 +107,8 @@ export function SidebarContent({ userProfile, onNavigate }: { userProfile: UserP
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
+    localStorage.removeItem("tenantId");
+    localStorage.removeItem("activeRole");
     window.location.href = "/login";
   };
 
@@ -165,7 +169,8 @@ export function SidebarContent({ userProfile, onNavigate }: { userProfile: UserP
 
 export function MobileSidebarContent({ userProfile, onNavigate }: { userProfile: UserProfile, onNavigate?: () => void }) {
   const pathname = usePathname();
-  const navigation = getNavigationByRole(userProfile.role);
+  // Use activeRole for navigation
+  const navigation = getNavigationByRole(userProfile.activeRole);
 
   const { data: tenants } = useQuery({
     queryKey: ["tenants"],
@@ -177,6 +182,8 @@ export function MobileSidebarContent({ userProfile, onNavigate }: { userProfile:
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
+    localStorage.removeItem("tenantId");
+    localStorage.removeItem("activeRole");
     window.location.href = "/login";
   };
 
@@ -221,8 +228,8 @@ export function MobileSidebarContent({ userProfile, onNavigate }: { userProfile:
             {userProfile.name}
             <BadgeCheck className="w-4 h-4 text-blue-500" />
           </h3>
-          <p className="text-sm font-medium text-muted-foreground capitalize mt-0.5">
-            {userProfile.role.replace("_", " ")}
+          <p className="text-sm font-medium text-muted-foreground mt-0.5">
+            {getRoleDisplayName(userProfile.activeRole)}
           </p>
           {hospitalName && (
             <div className="mt-3 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-1.5 border border-emerald-100 dark:border-emerald-900/50">
@@ -232,6 +239,9 @@ export function MobileSidebarContent({ userProfile, onNavigate }: { userProfile:
           )}
         </div>
       </div>
+
+      {/* Mobile Role Switcher — only shows for multi-role users */}
+      <MobileRoleSwitcher />
 
       {/* Navigation */}
       <motion.nav 

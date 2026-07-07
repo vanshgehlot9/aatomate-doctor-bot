@@ -992,7 +992,7 @@ def process_whatsapp_message(body: Dict[Any, Any]):
                                     send_success_messages(from_number, phone_number_id, doctor, tenant_id)
                                 elif status == "registration_success":
                                     send_whatsapp_message(from_number, "✅ Registration Successful!", phone_number_id)
-                                    send_patient_classification_message(from_number, phone_number_id)
+                                    send_flow_cta_message(from_number, phone_number_id, profile_name)
                             except Exception as e:
                                 logger.error(f"[nfm_reply] parse error: {e}")
 

@@ -19,9 +19,9 @@ export function RoleGuard({ children, allowedRoles, fallback }: RoleGuardProps) 
   useEffect(() => {
     if (!loading) {
       if (!user || !userProfile) {
-        router.push("/login"); // Need to make sure this route exists and uses Supabase Auth
-      } else if (!hasPermission(userProfile.role, allowedRoles)) {
-        router.push("/unauthorized"); // Need to create an unauthorized page
+        router.push("/login");
+      } else if (!hasPermission(userProfile.activeRole, allowedRoles)) {
+        router.push("/unauthorized");
       }
     }
   }, [loading, user, userProfile, router, allowedRoles]);
@@ -34,7 +34,7 @@ export function RoleGuard({ children, allowedRoles, fallback }: RoleGuardProps) 
     );
   }
 
-  if (!user || !userProfile || !hasPermission(userProfile.role, allowedRoles)) {
+  if (!user || !userProfile || !hasPermission(userProfile.activeRole, allowedRoles)) {
     return fallback || null;
   }
 

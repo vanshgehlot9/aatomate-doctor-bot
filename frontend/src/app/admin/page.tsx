@@ -41,7 +41,7 @@ export default function AdminDashboard() {
 
   // Filter staff for this specific hospital
   const hospitalStaff = users?.filter(
-    (u) => u.tenantId === userProfile?.tenantId && u.role === Role.STAFF
+    (u) => u.tenantId === userProfile?.tenantId && (u.roles?.includes(Role.STAFF) || u.role === Role.STAFF)
   ) || [];
   const totalStaff = hospitalStaff.length;
 

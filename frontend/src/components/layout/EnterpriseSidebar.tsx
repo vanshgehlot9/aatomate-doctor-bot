@@ -164,7 +164,7 @@ export function EnterpriseSidebar({ userProfile, isOpen, onClose }: EnterpriseSi
                 </Avatar>
                 <div className="truncate">
                   <p className="text-[13px] font-medium text-[#111827] truncate">{userProfile.name}</p>
-                  <p className="text-[11px] text-[#6B7280] truncate capitalize">{userProfile.role.replace("_", " ")}</p>
+                  <p className="text-[11px] text-[#6B7280] truncate capitalize">{userProfile.activeRole.replace("_", " ")}</p>
                 </div>
               </div>
             )}

@@ -13,8 +13,9 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { SidebarContent, MobileSidebarContent } from "./DynamicSidebar";
-import { UserProfile } from "@/lib/rbac";
+import { MobileSidebarContent } from "./DynamicSidebar";
+import { UserProfile, getRoleDisplayName } from "@/lib/rbac";
+import { RoleSwitcher } from "./RoleSwitcher";
 import { supabase } from "@/lib/supabase";
 
 export function Topbar({ userProfile }: { userProfile: UserProfile }) {
@@ -26,6 +27,8 @@ export function Topbar({ userProfile }: { userProfile: UserProfile }) {
     for (const cookie of ALL_COOKIES) {
       document.cookie = `${cookie}=; path=/; max-age=0`;
     }
+    localStorage.removeItem("tenantId");
+    localStorage.removeItem("activeRole");
     router.push("/login");
   };
 
@@ -53,7 +56,10 @@ export function Topbar({ userProfile }: { userProfile: UserProfile }) {
         </div>
       </div>
 
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-3">
+        {/* Role Switcher — only shows when user has multiple roles */}
+        <RoleSwitcher />
+
         <button className="p-2 hover:bg-muted rounded-full text-muted-foreground relative transition-colors">
           <Bell className="w-5 h-5" />
           <span className="absolute top-2 right-2 w-2 h-2 bg-destructive rounded-full border-2 border-card"></span>
@@ -61,10 +67,10 @@ export function Topbar({ userProfile }: { userProfile: UserProfile }) {
 
         <DropdownMenu>
           <DropdownMenuTrigger className="focus:outline-none">
-            <div className="flex items-center gap-3 pl-4 border-l border-border ml-2">
+            <div className="flex items-center gap-3 pl-3 border-l border-border ml-1">
               <div className="text-right hidden sm:block">
                 <p className="text-sm font-semibold text-foreground leading-none">{userProfile.name}</p>
-                <p className="text-xs text-muted-foreground mt-1 capitalize">{userProfile.role.replace("_", " ")}</p>
+                <p className="text-xs text-muted-foreground mt-1">{getRoleDisplayName(userProfile.activeRole)}</p>
               </div>
               <Avatar className="w-9 h-9 ring-2 ring-primary/10">
                 <AvatarFallback className="bg-primary text-primary-foreground text-xs font-semibold">

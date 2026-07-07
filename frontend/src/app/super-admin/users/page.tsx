@@ -83,7 +83,8 @@ export default function UsersPage() {
     return (
       (user.name || "").toLowerCase().includes(query) ||
       (user.email || "").toLowerCase().includes(query) ||
-      (user.role || "").toLowerCase().includes(query)
+      (user.role || "").toLowerCase().includes(query) ||
+      (user.roles?.join(" ") || "").toLowerCase().includes(query)
     );
   });
 
