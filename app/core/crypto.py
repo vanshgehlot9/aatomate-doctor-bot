@@ -56,21 +56,41 @@ def _build_keyring() -> List[Tuple[Any, str]]:
     # Check Environment Variable (for Render/production)
     env_key = os.environ.get("WHATSAPP_PRIVATE_KEY")
     if env_key:
+        logger.warning(f"[crypto] WHATSAPP_PRIVATE_KEY env var found, length={len(env_key)}, starts_with={env_key[:30]!r}")
         try:
-            # Handle newline formatting issues if pasted directly into env variables
-            env_key_formatted = env_key.replace("\\n", "\n")
-            k = load_pem_private_key(env_key_formatted.encode('utf-8'), password=None)
-            ring.append((k, _fp(k)))
-            logger.info(f"[crypto] Loaded current key from WHATSAPP_PRIVATE_KEY fp={ring[-1][1]}")
+            # Try multiple formats — Render can mangle newlines in different ways
+            key_bytes = None
+            for attempt, formatted in enumerate([
+                env_key,                                          # 1. Already has real newlines
+                env_key.replace("\\n", "\n"),                     # 2. Literal \n sequences
+                env_key.replace("\\\\n", "\n"),                   # 3. Double-escaped \\n
+                env_key.replace(" ", "\n"),                       # 4. Newlines replaced with spaces
+            ]):
+                try:
+                    k = load_pem_private_key(formatted.encode('utf-8'), password=None)
+                    key_bytes = k
+                    logger.warning(f"[crypto] ✅ Loaded key from env var on attempt {attempt+1}")
+                    break
+                except Exception as parse_err:
+                    logger.warning(f"[crypto] Attempt {attempt+1} failed: {parse_err}")
+                    continue
+            
+            if key_bytes:
+                ring.append((key_bytes, _fp(key_bytes)))
+                logger.warning(f"[crypto] Loaded current key from WHATSAPP_PRIVATE_KEY fp={ring[-1][1]}")
+            else:
+                logger.error(f"[crypto] ❌ ALL 4 parse attempts failed for env var. First 80 chars: {env_key[:80]!r}")
         except Exception as e:
             logger.error(f"[crypto] Failed to load key from environment variable: {e}")
+    else:
+        logger.warning("[crypto] ⚠️ WHATSAPP_PRIVATE_KEY env var NOT SET")
             
     # Fallback to local file if not found in env
     if not ring and os.path.exists(PRIVATE_KEY_PATH):
         k = _load_key(PRIVATE_KEY_PATH)
         if k:
             ring.append((k, _fp(k)))
-            logger.info(f"[crypto] Loaded current key fp={ring[-1][1]}")
+            logger.warning(f"[crypto] Loaded current key from FILE fp={ring[-1][1]}")
             
     if os.path.isdir(KEY_ARCHIVE_DIR):
         for path in sorted(glob.glob(os.path.join(KEY_ARCHIVE_DIR, "private_*.pem")), reverse=True):
@@ -83,10 +103,11 @@ def _build_keyring() -> List[Tuple[Any, str]]:
                     ring.append((k, fp))
                     logger.info(f"[crypto] Loaded archived key fp={fp} ({os.path.basename(path)})")
     if not ring:
+        logger.error("[crypto] ❌ NO KEYS LOADED AT ALL — decryption will fail!")
         raise FileNotFoundError(
             f"No usable private keys in {PRIVATE_KEY_PATH!r} or {KEY_ARCHIVE_DIR!r}. "
             "Run: python sync_keys.py")
-    logger.info(f"[crypto] Keyring ready — {len(ring)} key(s) available.")
+    logger.warning(f"[crypto] Keyring ready — {len(ring)} key(s) available.")
     return ring
 
 

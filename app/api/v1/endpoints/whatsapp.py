@@ -1129,7 +1129,7 @@ async def whatsapp_flow_endpoint(request: Request):
             logger.error(f"[flow] Key missing: {e}")
             raise HTTPException(status_code=500, detail=str(e))
         except ValueError as e:
-            logger.info(f"[flow] Client used old encryption key. Returning 421 to trigger automatic key rotation (this is normal behavior).")
+            logger.warning(f"[flow] ❌ Decryption FAILED: {e}")
             return Response(status_code=421, content="Decryption failed")
         except Exception as e:
             import traceback
