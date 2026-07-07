@@ -784,6 +784,13 @@ def process_whatsapp_message(body: Dict[Any, Any]):
                 metadata        = value.get("metadata", {})
                 phone_number_id = metadata.get("phone_number_id", "")
                 
+                # ── STRICT AATOMATE BLOCK ─────────────────────────────────────
+                # Absolutely prevent Doctorbot from processing messages meant for Aatomate
+                if phone_number_id == "1118908934647384":
+                    logger.warning("Hard-blocked Aatomate message from being processed by Doctorbot.")
+                    continue
+                # ─────────────────────────────────────────────────────────────
+                
                 # ── MULTI-TENANT ISOLATION ────────────────────────────────────
                 # Resolve which hospital/tenant this message belongs to by looking
                 # up the WhatsApp phone_number_id. This is the ONLY correct
