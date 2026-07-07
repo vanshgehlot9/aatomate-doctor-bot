@@ -3,6 +3,7 @@ from app.api.deps import get_current_user, CurrentUser
 from pydantic import BaseModel, EmailStr
 from typing import Optional, List
 from app.db.supabase import db
+from app.db.retry import with_retry
 import uuid
 import random
 import string
@@ -71,7 +72,7 @@ def create_user(user_in: UserCreate, current_user: CurrentUser = Depends(get_cur
         legacy_role = roles[0]
         
         # 1. Create the user in Supabase Auth using Admin API
-        user_response = db.auth.admin.create_user({
+        user_response = with_retry(lambda: db.auth.admin.create_user({
             "email": user_in.email,
             "password": random_password,
             "phone": user_in.phone,
@@ -84,7 +85,7 @@ def create_user(user_in: UserCreate, current_user: CurrentUser = Depends(get_cur
                 "tenantId": user_in.tenant_id,
                 "tenant_id": user_in.tenant_id
             }
-        })
+        }))()
         
         if not user_response.user:
             raise HTTPException(status_code=500, detail="Failed to create user in Auth")
@@ -105,7 +106,7 @@ def create_user(user_in: UserCreate, current_user: CurrentUser = Depends(get_cur
             "updated_at": now
         }
         
-        db.table("users").insert(profile_data).execute()
+        with_retry(lambda: db.table("users").insert(profile_data).execute())()
             
         return UserResponse(
             uid=uid,
@@ -133,9 +134,9 @@ def get_users(current_user: CurrentUser = Depends(get_current_user)):
             
         # Filter by the authenticated user's tenantId — no cross-hospital data
         if current_user.active_role == "super_admin":
-            response = db.table("users").select("*").execute()
+            response = with_retry(lambda: db.table("users").select("*").execute())()
         else:
-            response = db.table("users").select("*").eq("tenant_id", current_user.tenant_id).execute()
+            response = with_retry(lambda: db.table("users").select("*").eq("tenant_id", current_user.tenant_id).execute())()
         
         users_list = []
         if response.data:
@@ -172,7 +173,7 @@ def get_current_user_profile(current_user: CurrentUser = Depends(get_current_use
         if not db:
             raise HTTPException(status_code=500, detail="Database not initialized")
         
-        response = db.table("users").select("*").eq("id", current_user.uid).single().execute()
+        response = with_retry(lambda: db.table("users").select("*").eq("id", current_user.uid).single().execute())()
         
         if not response.data:
             raise HTTPException(status_code=404, detail="User profile not found")
@@ -226,20 +227,19 @@ def switch_active_role(body: SwitchRoleRequest, current_user: CurrentUser = Depe
         now = datetime.utcnow().isoformat()
         
         # 1. Update the database
-        response = db.table("users").update({
+        response = with_retry(lambda: db.table("users").update({
             "active_role": requested_role,
             "role": requested_role,  # Keep legacy column in sync
             "updated_at": now
-        }).eq("id", current_user.uid).execute()
+        }).eq("id", current_user.uid).execute())()
         
         if not response.data:
             raise HTTPException(status_code=404, detail="User not found")
         
         updated_user = response.data[0]
         
-        # 2. Update Supabase Auth user_metadata
         try:
-            db.auth.admin.update_user_by_id(current_user.uid, {
+            with_retry(lambda: db.auth.admin.update_user_by_id(current_user.uid, {
                 "user_metadata": {
                     "activeRole": requested_role,
                     "role": requested_role,  # Legacy
@@ -248,7 +248,7 @@ def switch_active_role(body: SwitchRoleRequest, current_user: CurrentUser = Depe
                     "tenant_id": current_user.tenant_id,
                     "name": updated_user.get("name", ""),
                 }
-            })
+            }))()
         except Exception as auth_err:
             # Log but don't fail — DB is already updated
             print(f"Warning: Failed to update auth metadata for role switch: {auth_err}")
@@ -287,14 +287,14 @@ def update_user(uid: str, user_in: UserUpdate, current_user: CurrentUser = Depen
             update_data["role"] = user_in.roles[0]  # Keep legacy in sync
             # If current active_role is no longer in the roles list, reset it
             # We'll need to fetch current active_role first
-            existing = db.table("users").select("active_role").eq("id", uid).single().execute()
+            existing = with_retry(lambda: db.table("users").select("active_role").eq("id", uid).single().execute())()
             if existing.data:
                 current_active = existing.data.get("active_role", "")
                 if current_active not in user_in.roles:
                     update_data["active_role"] = user_in.roles[0]
         elif user_in.role is not None:
             # Legacy single-role update — add to roles array if not present
-            existing = db.table("users").select("roles, active_role").eq("id", uid).single().execute()
+            existing = with_retry(lambda: db.table("users").select("roles, active_role").eq("id", uid).single().execute())()
             if existing.data:
                 current_roles = existing.data.get("roles") or []
                 if user_in.role not in current_roles:
@@ -313,7 +313,7 @@ def update_user(uid: str, user_in: UserUpdate, current_user: CurrentUser = Depen
         update_data["updated_at"] = datetime.utcnow().isoformat()
         
         # Update database
-        response = db.table("users").update(update_data).eq("id", uid).execute()
+        response = with_retry(lambda: db.table("users").update(update_data).eq("id", uid).execute())()
         if not response.data:
             raise HTTPException(status_code=404, detail="User not found")
             
@@ -330,7 +330,7 @@ def update_user(uid: str, user_in: UserUpdate, current_user: CurrentUser = Depen
             
         if auth_update:
             try:
-                db.auth.admin.update_user_by_id(uid, {"user_metadata": auth_update})
+                with_retry(lambda: db.auth.admin.update_user_by_id(uid, {"user_metadata": auth_update}))()
             except Exception as e:
                 print(f"Failed to update auth metadata for {uid}: {e}")
                 
@@ -363,13 +363,13 @@ def delete_user(uid: str, current_user: CurrentUser = Depends(get_current_user))
             
         # Delete from Supabase Auth using Admin API
         try:
-            db.auth.admin.delete_user(uid)
+            with_retry(lambda: db.auth.admin.delete_user(uid))()
         except Exception as e:
             # If user is not in Auth but might be in db, try deleting from db anyway
             print(f"Warning: User not deleted from auth: {e}")
         
         # Delete from database
-        db.table("users").delete().eq("id", uid).execute()
+        with_retry(lambda: db.table("users").delete().eq("id", uid).execute())()
             
         return {"success": True, "message": "User deleted successfully"}
     except Exception as e:

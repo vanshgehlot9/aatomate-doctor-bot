@@ -1464,16 +1464,17 @@ async def whatsapp_flow_endpoint(request: Request):
                     if created:
                         try:
                             from app.db.supabase import db as _db
+                            from app.db.retry import with_retry
                             from app.services.patient_service import PatientService
                             from app.schemas.patient import PatientCreate
                             
                             # Update appointment with patient details
                             if _db:
-                                _db.table("appointments").update({
+                                with_retry(lambda: _db.table("appointments").update({
                                     "patient_name": patient_name,
                                     "patient_phone": patient_phone,
                                     "patient_email": data.get("email", ""),
-                                }).eq("tenant_id", tenant_id).eq("id", created.id).execute()
+                                }).eq("tenant_id", tenant_id).eq("id", created.id).execute())()
                                
                             # Ensure patient exists
                             patient_email = data.get("email", "").strip() or None

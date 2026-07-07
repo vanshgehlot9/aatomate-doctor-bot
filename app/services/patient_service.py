@@ -1,4 +1,5 @@
 from app.db.supabase import db
+from app.db.retry import with_retry
 from app.schemas.patient import PatientCreate, PatientUpdate, PatientInDB
 from typing import List, Optional
 from datetime import datetime
@@ -7,7 +8,9 @@ class PatientService:
     @staticmethod
     def get_patient(tenant_id: str, patient_id: str) -> Optional[PatientInDB]:
         if not db: return None
-        response = db.table("patients").select("*").eq("tenant_id", tenant_id).eq("id", patient_id).execute()
+        response = with_retry(
+            lambda: db.table("patients").select("*").eq("tenant_id", tenant_id).eq("id", patient_id).execute()
+        )()
         if response.data:
             return PatientInDB(**response.data[0])
         return None
@@ -20,7 +23,9 @@ class PatientService:
         patient_data["dob"] = str(patient_data["dob"])
         patient_data["tenant_id"] = tenant_id
         
-        response = db.table("patients").insert(patient_data).execute()
+        response = with_retry(
+            lambda: db.table("patients").insert(patient_data).execute()
+        )()
         if response.data:
             return PatientInDB(**response.data[0])
         return None
@@ -29,7 +34,9 @@ class PatientService:
     def get_all_patients(tenant_id: str) -> List[PatientInDB]:
         if not db: return []
         
-        response = db.table("patients").select("*").eq("tenant_id", tenant_id).execute()
+        response = with_retry(
+            lambda: db.table("patients").select("*").eq("tenant_id", tenant_id).execute()
+        )()
         if response.data:
             return [PatientInDB(**row) for row in response.data]
         return []
@@ -43,7 +50,9 @@ class PatientService:
         clean = mobile_number.replace("+", "").replace(" ", "").replace("-", "")
         
         # Try exact match first, then partial match with last 10 digits
-        response = db.table("patients").select("*").eq("tenant_id", tenant_id).execute()
+        response = with_retry(
+            lambda: db.table("patients").select("*").eq("tenant_id", tenant_id).execute()
+        )()
         if not response.data:
             return []
         

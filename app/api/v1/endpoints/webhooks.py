@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException, Header, Query
 from typing import List, Dict
 from datetime import datetime, timedelta
 from app.db.supabase import db
+from app.db.retry import with_retry
 from app.schemas.appointment import AppointmentInDB
 
 router = APIRouter()
@@ -19,7 +20,7 @@ def get_upcoming_appointments(x_tenant_id: str = Header(...)):
     if not db:
         raise HTTPException(status_code=500, detail="Database connection failed")
         
-    response = db.table("appointments").select("*").eq("tenant_id", x_tenant_id).in_("status", ["Confirmed", "Pending"]).execute()
+    response = with_retry(lambda: db.table("appointments").select("*").eq("tenant_id", x_tenant_id).in_("status", ["Confirmed", "Pending"]).execute())()
     docs = response.data if response.data else []
         
     now = datetime.utcnow()

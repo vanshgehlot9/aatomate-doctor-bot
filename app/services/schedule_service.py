@@ -1,6 +1,7 @@
 from typing import List, Optional
 from datetime import datetime, date, timedelta
 from app.db.supabase import db
+from app.db.retry import with_retry
 from app.schemas.schedule import (
     DoctorScheduleCreate,
     DoctorScheduleInDB,
@@ -22,7 +23,7 @@ class ScheduleService:
         data = schedule_in.dict()
         data['tenant_id'] = tenant_id
         
-        response = db.table("doctor_schedules").insert(data).execute()
+        response = with_retry(lambda: db.table("doctor_schedules").insert(data).execute())()
         if response.data:
             return DoctorScheduleInDB(**response.data[0])
         return None
@@ -31,7 +32,7 @@ class ScheduleService:
     def get_doctor_schedules(tenant_id: str, doctor_id: str) -> List[DoctorScheduleInDB]:
         if not db: return []
         
-        response = db.table("doctor_schedules").select("*").eq("tenant_id", tenant_id).eq("doctor_id", doctor_id).execute()
+        response = with_retry(lambda: db.table("doctor_schedules").select("*").eq("tenant_id", tenant_id).eq("doctor_id", doctor_id).execute())()
         if response.data:
             return [DoctorScheduleInDB(**row) for row in response.data]
         return []
@@ -44,7 +45,7 @@ class ScheduleService:
         data['date'] = data['date'].isoformat()
         data['tenant_id'] = tenant_id
         
-        response = db.table("doctor_holidays").insert(data).execute()
+        response = with_retry(lambda: db.table("doctor_holidays").insert(data).execute())()
         
         if response.data:
             ret_data = response.data[0]
@@ -57,7 +58,7 @@ class ScheduleService:
     def get_doctor_holidays(tenant_id: str, doctor_id: str, target_date: date) -> List[DoctorHolidayInDB]:
         if not db: return []
         
-        response = db.table("doctor_holidays").select("*").eq("tenant_id", tenant_id).eq("doctor_id", doctor_id).eq("date", target_date.isoformat()).execute()
+        response = with_retry(lambda: db.table("doctor_holidays").select("*").eq("tenant_id", tenant_id).eq("doctor_id", doctor_id).eq("date", target_date.isoformat()).execute())()
         holidays = []
         if response.data:
             for row in response.data:
@@ -93,7 +94,7 @@ class ScheduleService:
         # 3. Filter out already-booked slots
         if not db: return []
         
-        response = db.table("appointments").select("appointment_time").eq("tenant_id", tenant_id).eq("doctor_id", doctor_id).eq("appointment_date", target_date.isoformat()).in_("status", ['Pending', 'Confirmed', 'Checked-In']).execute()
+        response = with_retry(lambda: db.table("appointments").select("appointment_time").eq("tenant_id", tenant_id).eq("doctor_id", doctor_id).eq("appointment_date", target_date.isoformat()).in_("status", ['Pending', 'Confirmed', 'Checked-In']).execute())()
         
         booked_times = {row['appointment_time'] for row in response.data} if response.data else set()
         

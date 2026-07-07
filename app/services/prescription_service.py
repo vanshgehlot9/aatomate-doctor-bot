@@ -1,4 +1,5 @@
 from app.db.supabase import db
+from app.db.retry import with_retry
 from app.schemas.prescription import PrescriptionInDB, PrescriptionCreate, PrescriptionVersion, PrescriptionStatus
 from typing import List, Optional
 from datetime import datetime
@@ -8,7 +9,7 @@ class PrescriptionService:
     @staticmethod
     def get_prescription(tenant_id: str, prescription_id: str) -> Optional[PrescriptionInDB]:
         if not db: return None
-        response = db.table("prescriptions").select("*").eq("tenant_id", tenant_id).eq("id", prescription_id).execute()
+        response = with_retry(lambda: db.table("prescriptions").select("*").eq("tenant_id", tenant_id).eq("id", prescription_id).execute())()
         if response.data:
             return PrescriptionInDB(**response.data[0])
         return None
@@ -35,7 +36,7 @@ class PrescriptionService:
             "versions": [initial_version]
         })
         
-        response = db.table("prescriptions").insert(prescription_data).execute()
+        response = with_retry(lambda: db.table("prescriptions").insert(prescription_data).execute())()
         if response.data:
             return PrescriptionInDB(**response.data[0])
         return None
@@ -44,7 +45,7 @@ class PrescriptionService:
     def update_prescription(tenant_id: str, prescription_id: str, update_data: dict, user_id: str, changes_summary: str) -> Optional[PrescriptionInDB]:
         if not db: return None
         
-        current_resp = db.table("prescriptions").select("*").eq("tenant_id", tenant_id).eq("id", prescription_id).execute()
+        current_resp = with_retry(lambda: db.table("prescriptions").select("*").eq("tenant_id", tenant_id).eq("id", prescription_id).execute())()
         if not current_resp.data:
             return None
             
@@ -75,7 +76,7 @@ class PrescriptionService:
         if "status" in update_data and hasattr(update_data["status"], "value"):
             update_data["status"] = update_data["status"].value
             
-        response = db.table("prescriptions").update(update_data).eq("tenant_id", tenant_id).eq("id", prescription_id).execute()
+        response = with_retry(lambda: db.table("prescriptions").update(update_data).eq("tenant_id", tenant_id).eq("id", prescription_id).execute())()
         if response.data:
             return PrescriptionInDB(**response.data[0])
         return None
@@ -84,7 +85,7 @@ class PrescriptionService:
     def get_patient_prescriptions(tenant_id: str, patient_id: str) -> List[PrescriptionInDB]:
         if not db: return []
         
-        response = db.table("prescriptions").select("*").eq("tenant_id", tenant_id).eq("patient_id", patient_id).execute()
+        response = with_retry(lambda: db.table("prescriptions").select("*").eq("tenant_id", tenant_id).eq("patient_id", patient_id).execute())()
         if response.data:
             results = [PrescriptionInDB(**row) for row in response.data]
             results.sort(key=lambda x: x.created_at, reverse=True)

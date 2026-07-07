@@ -44,8 +44,9 @@ async def upload_report(
     # Save raw bytes to Supabase Storage if available, else store inline
     try:
         from app.db.supabase import db as _sb
+        from app.db.retry import with_retry
         storage_path = f"reports/{t_id}/{report.id}/{file.filename}"
-        _sb.storage.from_("reports").upload(storage_path, contents, {"content-type": file.content_type})
+        with_retry(lambda: _sb.storage.from_("reports").upload(storage_path, contents, {"content-type": file.content_type}))()
         file_url = _sb.storage.from_("reports").get_public_url(storage_path)
         ReportService.update_report(t_id, report.id, MedicalReportUpdate(file_url=file_url))
     except Exception:

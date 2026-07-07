@@ -1,5 +1,9 @@
 from app.db.supabase import db
+from app.db.retry import with_retry
 from datetime import datetime
+import logging
+
+logger = logging.getLogger(__name__)
 
 class AuditService:
     @staticmethod
@@ -21,7 +25,9 @@ class AuditService:
                 "timestamp": datetime.utcnow().isoformat()
             }
             
-            db.table("audit_logs").insert(log_data).execute()
+            with_retry(
+                lambda: db.table("audit_logs").insert(log_data).execute()
+            )()
         except Exception as e:
             # Audit logging shouldn't break the main flow, so we catch and print
-            print(f"Failed to create audit log: {e}")
+            logger.warning(f"Failed to create audit log: {e}")

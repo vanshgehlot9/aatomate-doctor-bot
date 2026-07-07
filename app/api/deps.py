@@ -1,6 +1,7 @@
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from app.db.supabase import db
+from app.db.retry import with_retry
 from pydantic import BaseModel
 from typing import Optional, List, Callable
 
@@ -18,7 +19,7 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(securit
     token = credentials.credentials
     try:
         # Use Supabase client to get the user based on the JWT
-        user_response = db.auth.get_user(token)
+        user_response = with_retry(lambda: db.auth.get_user(token))()
         
         if not user_response or not user_response.user:
             raise HTTPException(
@@ -50,7 +51,7 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(securit
 
         # If tenant_id or roles are missing (e.g. after OAuth login), fallback to DB
         if not tenant_id or not metadata.get("roles"):
-            db_user_res = db.table("users").select("tenant_id, roles, active_role, role").eq("id", uid).execute()
+            db_user_res = with_retry(lambda: db.table("users").select("tenant_id, roles, active_role, role").eq("id", uid).execute())()
             if db_user_res.data:
                 db_u = db_user_res.data[0]
                 if not tenant_id:

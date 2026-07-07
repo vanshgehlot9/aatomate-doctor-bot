@@ -66,11 +66,12 @@ async def upload_prescription(
         # 4. Link to Appointment if provided
         if appointment_id:
             from app.db.supabase import db
+            from app.db.retry import with_retry
             if db:
-                db.table("appointments").update({
+                with_retry(lambda: db.table("appointments").update({
                     "prescription_id": saved_presc.id,
                     "status": "Completed" # Assuming uploading prescription completes the consultation
-                }).eq("tenant_id", current_user.tenant_id).eq("id", appointment_id).execute()
+                }).eq("tenant_id", current_user.tenant_id).eq("id", appointment_id).execute())()
         
         return saved_presc
         

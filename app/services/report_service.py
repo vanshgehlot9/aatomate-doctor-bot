@@ -8,6 +8,7 @@ import logging
 import uuid
 
 from app.db.supabase import db
+from app.db.retry import with_retry
 from app.schemas.report import (
     MedicalReportCreate,
     MedicalReportInDB,
@@ -34,7 +35,7 @@ class ReportService:
         data["created_at"] = now.isoformat()
         data["updated_at"] = now.isoformat()
         
-        response = db.table(REPORTS_COLLECTION).insert(data).execute()
+        response = with_retry(lambda: db.table(REPORTS_COLLECTION).insert(data).execute())()
         if response.data:
             return MedicalReportInDB(**response.data[0])
         return None
@@ -43,7 +44,7 @@ class ReportService:
     def get_report(tenant_id: str, report_id: str) -> Optional[MedicalReportInDB]:
         if not db: return None
         
-        response = db.table(REPORTS_COLLECTION).select("*").eq("tenant_id", tenant_id).eq("id", report_id).execute()
+        response = with_retry(lambda: db.table(REPORTS_COLLECTION).select("*").eq("tenant_id", tenant_id).eq("id", report_id).execute())()
         if response.data:
             return MedicalReportInDB(**response.data[0])
         return None
@@ -59,7 +60,7 @@ class ReportService:
         if "status" in patch and hasattr(patch["status"], "value"):
             patch["status"] = patch["status"].value
             
-        response = db.table(REPORTS_COLLECTION).update(patch).eq("tenant_id", tenant_id).eq("id", report_id).execute()
+        response = with_retry(lambda: db.table(REPORTS_COLLECTION).update(patch).eq("tenant_id", tenant_id).eq("id", report_id).execute())()
         
         if response.data:
             return MedicalReportInDB(**response.data[0])
@@ -77,7 +78,7 @@ class ReportService:
         if not db: return []
         
         try:
-            response = db.table(REPORTS_COLLECTION).select("*").eq("tenant_id", tenant_id).eq("patient_id", patient_id).order("created_at", desc=True).limit(limit).execute()
+            response = with_retry(lambda: db.table(REPORTS_COLLECTION).select("*").eq("tenant_id", tenant_id).eq("patient_id", patient_id).order("created_at", desc=True).limit(limit).execute())()
             
             if response.data:
                 return [MedicalReportInDB(**row) for row in response.data]
@@ -141,10 +142,10 @@ class ReportService:
             from app.schemas.report import MedicalReportUpdate, ReportStatus
 
             # Mark as processing
-            db.table(REPORTS_COLLECTION).update({
+            with_retry(lambda: db.table(REPORTS_COLLECTION).update({
                 "status": ReportStatus.PROCESSING.value,
                 "updated_at": datetime.utcnow().isoformat(),
-            }).eq("tenant_id", tenant_id).eq("id", report_id).execute()
+            }).eq("tenant_id", tenant_id).eq("id", report_id).execute())()
 
             # Run AI extraction
             result = ocr_engine.extract_report(image_bytes, mime_type)
@@ -165,10 +166,10 @@ class ReportService:
         except Exception as e:
             logger.error(f"[ReportService] process_report_async error for {report_id}: {e}")
             try:
-                db.table(REPORTS_COLLECTION).update({
+                with_retry(lambda: db.table(REPORTS_COLLECTION).update({
                     "status": ReportStatus.FAILED.value,
                     "updated_at": datetime.utcnow().isoformat(),
-                }).eq("tenant_id", tenant_id).eq("id", report_id).execute()
+                }).eq("tenant_id", tenant_id).eq("id", report_id).execute())()
             except Exception:
                 pass
 

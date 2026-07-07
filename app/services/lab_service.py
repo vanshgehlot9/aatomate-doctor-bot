@@ -1,4 +1,5 @@
 from app.db.supabase import db
+from app.db.retry import with_retry
 from app.schemas.laboratory import LabTestCreate, LabTestInDB, TestStatus
 from typing import List, Optional
 from datetime import datetime
@@ -15,7 +16,7 @@ class LabService:
         if hasattr(lab_test.status, 'value'):
             test_data["status"] = lab_test.status.value
             
-        response = db.table("lab_tests").insert(test_data).execute()
+        response = with_retry(lambda: db.table("lab_tests").insert(test_data).execute())()
         if response.data:
             return LabTestInDB(**response.data[0])
         return None
@@ -31,7 +32,7 @@ class LabService:
         if report_url:
             update_data["report_url"] = report_url
             
-        response = db.table("lab_tests").update(update_data).eq("tenant_id", tenant_id).eq("id", test_id).execute()
+        response = with_retry(lambda: db.table("lab_tests").update(update_data).eq("tenant_id", tenant_id).eq("id", test_id).execute())()
         if response.data:
             return LabTestInDB(**response.data[0])
         return None
@@ -40,7 +41,7 @@ class LabService:
     def get_all_tests(tenant_id: str) -> List[LabTestInDB]:
         if not db: return []
         
-        response = db.table("lab_tests").select("*").eq("tenant_id", tenant_id).execute()
+        response = with_retry(lambda: db.table("lab_tests").select("*").eq("tenant_id", tenant_id).execute())()
         if response.data:
             return [LabTestInDB(**row) for row in response.data]
         return []

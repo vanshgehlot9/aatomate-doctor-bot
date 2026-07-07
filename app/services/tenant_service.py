@@ -1,4 +1,5 @@
 from app.db.supabase import db
+from app.db.retry import with_retry
 from app.schemas.tenant import TenantCreate, TenantUpdate, TenantInDB
 from typing import List, Optional
 from datetime import datetime
@@ -7,7 +8,9 @@ class TenantService:
     @staticmethod
     def get_tenant(tenant_id: str) -> Optional[TenantInDB]:
         if not db: return None
-        response = db.table("tenants").select("*").eq("id", tenant_id).execute()
+        response = with_retry(
+            lambda: db.table("tenants").select("*").eq("id", tenant_id).execute()
+        )()
         if response.data:
             return TenantInDB(**response.data[0])
         return None
@@ -17,7 +20,9 @@ class TenantService:
         if not db: return None
         
         tenant_data = tenant.model_dump()
-        response = db.table("tenants").insert(tenant_data).execute()
+        response = with_retry(
+            lambda: db.table("tenants").insert(tenant_data).execute()
+        )()
         
         if response.data:
             return TenantInDB(**response.data[0])
@@ -31,17 +36,19 @@ class TenantService:
         if not update_data:
             return TenantService.get_tenant(tenant_id)
             
-        response = db.table("tenants").update(update_data).eq("id", tenant_id).execute()
+        with_retry(
+            lambda: db.table("tenants").update(update_data).eq("id", tenant_id).execute()
+        )()
         
-        if response.data:
-            return TenantService.get_tenant(tenant_id)
-        return None
+        return TenantService.get_tenant(tenant_id)
 
     @staticmethod
     def get_all_tenants() -> List[TenantInDB]:
         if not db: return []
         
-        response = db.table("tenants").select("*").execute()
+        response = with_retry(
+            lambda: db.table("tenants").select("*").execute()
+        )()
         if response.data:
             return [TenantInDB(**row) for row in response.data]
         return []
@@ -50,7 +57,9 @@ class TenantService:
     def delete_tenant(tenant_id: str) -> bool:
         if not db: return False
         
-        response = db.table("tenants").delete().eq("id", tenant_id).execute()
+        with_retry(
+            lambda: db.table("tenants").delete().eq("id", tenant_id).execute()
+        )()
         # Supposing successful delete returns data or simply no error
         return True
 
@@ -62,7 +71,9 @@ class TenantService:
         """
         if not db or not phone_number_id: return None
         
-        response = db.table("tenants").select("*").eq("whatsapp_number_id", phone_number_id).limit(1).execute()
+        response = with_retry(
+            lambda: db.table("tenants").select("*").eq("whatsapp_number_id", phone_number_id).limit(1).execute()
+        )()
         
         if response.data:
             return TenantInDB(**response.data[0])
