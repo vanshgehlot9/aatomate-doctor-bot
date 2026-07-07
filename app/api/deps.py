@@ -42,11 +42,26 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(securit
 
         # Normalize roles to a list
         if isinstance(roles, list) and len(roles) > 0:
-            roles = roles
+            pass
         elif legacy_role:
             roles = [legacy_role]
         else:
             roles = ["user"]
+
+        # If tenant_id or roles are missing (e.g. after OAuth login), fallback to DB
+        if not tenant_id or not metadata.get("roles"):
+            db_user_res = db.table("users").select("tenant_id, roles, active_role, role").eq("id", uid).execute()
+            if db_user_res.data:
+                db_u = db_user_res.data[0]
+                if not tenant_id:
+                    tenant_id = db_u.get("tenant_id")
+                if not metadata.get("roles"):
+                    db_roles = db_u.get("roles")
+                    if isinstance(db_roles, list) and len(db_roles) > 0:
+                        roles = db_roles
+                    elif db_u.get("role"):
+                        roles = [db_u.get("role")]
+                    active_role = db_u.get("active_role") or roles[0]
 
         # Determine active role
         if not active_role or active_role not in roles:

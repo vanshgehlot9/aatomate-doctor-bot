@@ -1191,6 +1191,8 @@ async def whatsapp_flow_endpoint(request: Request):
         else:
             doctors = DoctorService.get_all_doctors(tenant_id)
             specialties_set = set(doc.specialization for doc in doctors if doc.specialization)
+            if not specialties_set:
+                specialties_set = {"General"}
             specialties = [{"id": s, "title": s} for s in sorted(specialties_set)]
             
             response_data = {
@@ -1213,6 +1215,8 @@ async def whatsapp_flow_endpoint(request: Request):
                 available = [{"id": d.id, "title": f"Dr. {d.name}"} for d in doctors if d.specialization == specialty]
                 
                 specialties_set = set(doc.specialization for doc in doctors if doc.specialization)
+                if not specialties_set:
+                    specialties_set = {"General"}
                 specialties = [{"id": s, "title": s} for s in sorted(specialties_set)]
 
                 response_data = {
