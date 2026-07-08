@@ -21,8 +21,7 @@
                         "name": "registration_form",
                         "init-values": {
                             "name": "${data.patient_name_prefill}",
-                            "phone": "${data.patient_phone_prefill}",
-                            "country": "India"
+                            "phone": "${data.patient_phone_prefill}"
                         },
                         "children": [
                             {
@@ -63,29 +62,10 @@
                                 "required": true
                             },
                             {
-                                "type": "TextInput",
-                                "label": "Country",
-                                "name": "country",
-                                "required": true,
-                                "enabled": false
-                            },
-                            {
-                                "type": "TextInput",
-                                "label": "State",
-                                "name": "state",
-                                "required": true
-                            },
-                            {
-                                "type": "TextInput",
-                                "label": "City",
-                                "name": "city",
-                                "required": true
-                            },
-                            {
                                 "type": "TextArea",
                                 "label": "Address",
                                 "name": "address",
-                                "required": true
+                                "required": false
                             },
                             {
                                 "type": "TextInput",
@@ -126,9 +106,6 @@
                                         "dob": "${form.dob}",
                                         "email": "${form.email}",
                                         "phone": "${form.phone}",
-                                        "country": "${form.country}",
-                                        "state": "${form.state}",
-                                        "city": "${form.city}",
                                         "address": "${form.address}",
                                         "pin": "${form.pin}",
                                         "emergency_contact": "${form.emergency_contact}",

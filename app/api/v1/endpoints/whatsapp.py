@@ -178,13 +178,6 @@ def send_patient_classification_message(to_number: str, phone_number_id: str) ->
                             "id": "patient_new",
                             "title": "New Patient"
                         }
-                    },
-                    {
-                        "type": "reply",
-                        "reply": {
-                            "id": "patient_guest",
-                            "title": "Guest Booking"
-                        }
                     }
                 ]
             }
@@ -983,8 +976,6 @@ def process_whatsapp_message(body: Dict[Any, Any]):
                                 else:
                                     send_whatsapp_message(from_number, "No existing profiles found with your number. Let's register you as a new patient! 📋", phone_number_id)
                                     send_registration_flow_cta_message(from_number, phone_number_id, profile_name)
-                            elif button_id == "patient_guest":
-                                send_flow_cta_message(from_number, phone_number_id, profile_name)
                             elif button_id == "patient_new":
                                 send_registration_flow_cta_message(from_number, phone_number_id, profile_name)
                             elif button_id == "report_timeline":
