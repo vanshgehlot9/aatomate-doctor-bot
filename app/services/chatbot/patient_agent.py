@@ -354,7 +354,7 @@ class PatientAgent:
             logger.error(f"[send menu] Exception: {e}")
             return False
 
-    def send_success_messages(self, to_number: str, phone_number_id: str, doctor_id: str, tenant_id: str, appt_id: str = ""):
+    def send_success_messages(self, to_number: str, phone_number_id: str, doctor_id: str, tenant_id: str, appt_id: str = "", patient_id: str = "", appt_date: str = "", appt_time: str = ""):
         if not self.sender.access_token or not phone_number_id:
             return
     
@@ -377,12 +377,26 @@ class PatientAgent:
         url = f"https://graph.facebook.com/{WA_API_VERSION}/{phone_number_id}/messages"
         headers = {"Authorization": f"Bearer {self.sender.access_token}", "Content-Type": "application/json"}
     
+        # Format date/time nicely
+        date_display = appt_date or "Your selected date"
+        time_display = appt_time or "Your selected time"
+        try:
+            from datetime import datetime as _dt
+            if appt_date:
+                date_display = _dt.strptime(appt_date, "%Y-%m-%d").strftime("%A, %d %B %Y")
+            if appt_time and len(appt_time) >= 5:
+                time_display = _dt.strptime(appt_time[:5], "%H:%M").strftime("%-I:%M %p")
+        except Exception:
+            pass
+
         text = (
             "✅ *Appointment Confirmed!*\n\n"
-            f"👨‍⚕️ {doctor_name}\n"
+            f"👨‍⚕️ Dr. {doctor_name}\n"
             f"🏥 {clinic_name}\n"
-            f"🏢 {room_floor}\n\n"
-            "Please arrive 10 minutes early."
+            f"🏢 {room_floor}\n"
+            f"📅 {date_display}\n"
+            f"🕐 {time_display}\n\n"
+            "Please arrive 10 minutes early. 🙏"
         )
         _requests.post(url, headers=headers, json={"messaging_product": "whatsapp", "to": to_number, "type": "text", "text": {"body": text}})
     
@@ -426,6 +440,38 @@ class PatientAgent:
             }
         }
         _requests.post(url, headers=headers, json=list_payload)
+
+        # ── Family Member Notification ──────────────────────────────────────
+        try:
+            from app.services.patient_service import PatientService
+            patient_obj = PatientService.get_patient(tenant_id, patient_id) if patient_id else None
+            patient_name = "Your family member"
+            ec_phone = None
+            if patient_obj:
+                patient_name = patient_obj.name
+                ec_phone = patient_obj.emergency_contact
+
+            if ec_phone:
+                ec_clean = "".join(c for c in ec_phone if c.isdigit())
+                if ec_clean and len(ec_clean) >= 10:
+                    fam_text = (
+                        f"👨‍👩‍👧 *Family Notification — Aatomate Health*\n\n"
+                        f"*{patient_name}\'s* appointment has been successfully booked! 🎉\n\n"
+                        f"👨‍⚕️ Doctor: *Dr. {doctor_name}*\n"
+                        f"🏥 Clinic: *{clinic_name}*\n"
+                        f"📅 Date: *{date_display}*\n"
+                        f"🕐 Time: *{time_display}*\n"
+                        f"📍 Address: *{clinic_address}*\n\n"
+                        "Please help ensure they arrive 10 minutes early. 🙏"
+                    )
+                    _requests.post(url, headers={"Authorization": f"Bearer {self.sender.access_token}", "Content-Type": "application/json"},
+                        json={"messaging_product": "whatsapp", "to": ec_clean, "type": "text", "text": {"body": fam_text}})
+                    _requests.post(url, headers={"Authorization": f"Bearer {self.sender.access_token}", "Content-Type": "application/json"},
+                        json={"messaging_product": "whatsapp", "to": ec_clean, "type": "location",
+                              "location": {"longitude": lng, "latitude": lat, "name": clinic_name, "address": clinic_address}})
+                    logger.info(f"[PatientAgent] Family notification sent to {ec_clean} for patient {patient_name}")
+        except Exception as e:
+            logger.error(f"[PatientAgent] Failed to send family notification: {e}")
 
     # ── Reports helpers ───────────────────────────────────────────────────────────
 
@@ -1075,7 +1121,7 @@ class PatientAgent:
                                             logger.error(f"[nfm_reply] DB insert/update error for appointment: {e}")
                                             appt_id = ""
 
-                                        self.send_success_messages(from_number, phone_number_id, doctor, tenant_id, appt_id)
+                                        self.send_success_messages(from_number, phone_number_id, doctor, tenant_id, appt_id, patient_id=patient_id_db, appt_date=date_val or "", appt_time=time_val or "")
                                     elif status == "registration_success":
                                         self.send_whatsapp_message(from_number, "✅ Registration Successful!", phone_number_id)
                                         self.send_flow_cta_message(from_number, phone_number_id, profile_name)
