@@ -334,7 +334,8 @@ class PatientAgent:
                                 {"id": "menu_book_appointment", "title": "Book Appointment"},
                                 {"id": "menu_reports", "title": "Reports"},
                                 {"id": "menu_prescriptions", "title": "Prescriptions"},
-                                {"id": "menu_lab_test", "title": "Lab Test"}
+                                {"id": "menu_lab_test", "title": "Lab Test"},
+                                {"id": "menu_settings", "title": "⚙️ Settings"}
                             ]
                         }
                     ]
@@ -903,6 +904,57 @@ class PatientAgent:
                                     self._send_prescriptions_submenu(from_number, phone_number_id)
                                 elif list_id == "menu_lab_test":
                                     self.send_whatsapp_message(from_number, "Lab testing services are coming soon.", phone_number_id)
+                                elif list_id == "menu_settings":
+                                    payload = {
+                                        "messaging_product": "whatsapp",
+                                        "to": from_number,
+                                        "type": "interactive",
+                                        "interactive": {
+                                            "type": "list",
+                                            "header": {"type": "text", "text": "⚙️ Settings"},
+                                            "body": {"text": "Choose your preferred Water Reminder interval:"},
+                                            "footer": {"text": "Health is Wealth"},
+                                            "action": {
+                                                "button": "Select",
+                                                "sections": [{
+                                                    "title": "Water Reminder",
+                                                    "rows": [
+                                                        {"id": "setting_water_30", "title": "Every 30 mins", "description": "Default"},
+                                                        {"id": "setting_water_60", "title": "Every 1 hour"},
+                                                        {"id": "setting_water_120", "title": "Every 2 hours"},
+                                                        {"id": "setting_water_off", "title": "Turn Off"}
+                                                    ]
+                                                }]
+                                            }
+                                        }
+                                    }
+                                    import requests as _requests
+                                    _requests.post(f"https://graph.facebook.com/{WA_API_VERSION}/{phone_number_id}/messages", 
+                                                   headers={"Authorization": f"Bearer {self.sender.access_token}", "Content-Type": "application/json"}, 
+                                                   json=payload)
+                                elif list_id.startswith("setting_water_"):
+                                    # Update patient's insurance_details metadata
+                                    interval = list_id.replace("setting_water_", "")
+                                    val = 0 if interval == "off" else int(interval)
+                                    msg = "🔕 Water reminders are now *OFF*."
+                                    if val == 30: msg = "✅ Water reminders set to *Every 30 minutes*."
+                                    elif val == 60: msg = "✅ Water reminders set to *Every 1 hour*."
+                                    elif val == 120: msg = "✅ Water reminders set to *Every 2 hours*."
+
+                                    try:
+                                        from app.db.supabase import db
+                                        from app.services.patient_service import PatientService
+                                        patient = PatientService.get_patient_by_phone(settings.DEFAULT_TENANT_ID, from_number)
+                                        if patient:
+                                            meta = patient.insurance_details or {}
+                                            meta["water_interval"] = val
+                                            db.table("patients").update({"insurance_details": meta}).eq("id", patient.id).execute()
+                                            self.send_whatsapp_message(from_number, msg, phone_number_id)
+                                        else:
+                                            self.send_whatsapp_message(from_number, "Please register first.", phone_number_id)
+                                    except Exception as e:
+                                        logger.error(f"[PatientAgent] Setting water interval error: {e}")
+                                        self.send_whatsapp_message(from_number, "Failed to update settings.", phone_number_id)
                                 elif list_id.startswith("action_calendar::"):
                                     appt_id = list_id.split("::")[1] if "::" in list_id else ""
                                     self._handle_action_calendar(from_number, phone_number_id, appt_id)

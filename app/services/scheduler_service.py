@@ -297,6 +297,18 @@ async def _send_water_reminders():
                 if not clean:
                     continue
 
+                # Check custom water interval
+                interval = 30
+                if p.insurance_details and "water_interval" in p.insurance_details:
+                    interval = p.insurance_details["water_interval"]
+                
+                if interval == 0:
+                    continue # Off
+                elif interval == 60 and minute >= 30:
+                    continue # Only fire on top of the hour for 60m
+                elif interval == 120 and (minute >= 30 or hour % 2 != 0):
+                    continue # Only fire on even hours on top of the hour for 120m
+
                 payload = {
                     "type": "interactive",
                     "interactive": {
