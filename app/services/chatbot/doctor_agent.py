@@ -298,6 +298,12 @@ def _main_menu_payload(doctor_name: str) -> dict:
                             {"id": "TODAY_PATIENTS", "title": "📅 Today's Patients", "description": "View today's scheduled patients"},
                             {"id": "SEARCH_PATIENT", "title": "🔍 Search Patient", "description": "Search any patient by name or mobile"},
                         ]
+                    },
+                    {
+                        "title": "Schedule Management",
+                        "rows": [
+                            {"id": "MARK_UNAVAILABLE", "title": "🗓️ Mark Leave", "description": "Mark unavailable / cancel today"},
+                        ]
                     }
                 ]
             }
@@ -328,6 +334,7 @@ def _patient_action_payload(patient_name: str) -> dict:
                         "title": "Prescription & Status",
                         "rows": [
                             {"id": "ACTION_WRITE_RX", "title": "📝 Write Prescription", "description": "Create a new prescription"},
+                            {"id": "ACTION_CANCEL_APPT", "title": "🗑️ Cancel Appointment", "description": "Cancel appointment & notify"},
                             {"id": "ACTION_MARK_DONE", "title": "✅ Mark Completed", "description": "Mark appointment as done"},
                             {"id": "ACTION_MARK_NOSHOW", "title": "❌ Mark No-Show", "description": "Patient didn't show up"},
                             {"id": "ACTION_BACK", "title": "⬅️ Back to Menu", "description": "Return to main menu"},
@@ -430,6 +437,12 @@ class DoctorAgent:
             self.sender.send_message(from_number,
                 "🔍 *Search Patient*\n\nType the patient's *name* or *mobile number* to search:")
 
+        elif reply_id == "MARK_UNAVAILABLE":
+            session["flow"] = "MARK_LEAVE"
+            self.sender.send_message(from_number,
+                "🗓️ *Mark Leave / Unavailable*\n\n"
+                "Please type the date you want to mark as unavailable (e.g., 'today', 'tomorrow', or 'YYYY-MM-DD'):")
+
         elif reply_id == "ACTION_LABS":
             self._show_labs(from_number, session, doctor)
 
@@ -441,6 +454,9 @@ class DoctorAgent:
 
         elif reply_id == "ACTION_WRITE_RX":
             self._start_prescription_flow(from_number, session, doctor)
+
+        elif reply_id == "ACTION_CANCEL_APPT":
+            self._cancel_appointment(from_number, session, doctor)
 
         elif reply_id == "ACTION_MARK_DONE":
             self._mark_appointment(from_number, session, doctor, "completed")
@@ -457,7 +473,8 @@ class DoctorAgent:
         elif reply_id.startswith("PAT_"):
             parts = reply_id[4:].split("::")
             patient_id = parts[0]
-            self._select_patient(from_number, session, doctor, patient_id)
+            appt_id = parts[1] if len(parts) > 1 else ""
+            self._select_patient(from_number, session, doctor, patient_id, appt_id)
 
     # ── Text handler (handles flows & free-text) ─────────────────
 
@@ -471,6 +488,42 @@ class DoctorAgent:
             session = _get_session(from_number)
             session["doctor"] = doctor
             self.sender.send_interactive_message(from_number, _main_menu_payload(doctor.name))
+            return
+
+        # ── Mark Leave flow ──
+        if flow == "MARK_LEAVE":
+            target_date = None
+            if lower == "today":
+                target_date = date.today().isoformat()
+            elif lower == "tomorrow":
+                from datetime import timedelta
+                target_date = (date.today() + timedelta(days=1)).isoformat()
+            else:
+                try:
+                    target_date = datetime.strptime(lower, "%Y-%m-%d").date().isoformat()
+                except:
+                    try:
+                        target_date = datetime.strptime(lower, "%d-%m-%Y").date().isoformat()
+                    except:
+                        target_date = None
+
+            if not target_date:
+                self.sender.send_message(from_number, "❌ Invalid date. Please reply 'today', 'tomorrow', or use YYYY-MM-DD.")
+                return
+
+            try:
+                # Add to a new table or just cancel all appointments
+                # Let's cancel all appointments for that day
+                res = db.table("appointments").select("id").eq("doctor_id", doctor.id).eq("appointment_date", target_date).neq("status", "completed").neq("status", "cancelled").execute()
+                appts = res.data or []
+                for appt in appts:
+                    db.table("appointments").update({"status": "cancelled"}).eq("id", appt['id']).execute()
+
+                self.sender.send_message(from_number, f"✅ Successfully marked *{target_date}* as Leave. Cancelled {len(appts)} scheduled appointment(s).\n\nType *menu* to go back.")
+            except Exception as e:
+                logger.error(f"[DoctorAgent] Error marking leave: {e}")
+                self.sender.send_message(from_number, "⚠️ Failed to mark leave. Please try again.")
+            session["flow"] = ""
             return
 
         # ── Patient search flow ──
@@ -591,12 +644,13 @@ class DoctorAgent:
 
     # ── Select and show a patient ────────────────────────────────
 
-    def _select_patient(self, from_number: str, session: dict, doctor, patient_id: str):
+    def _select_patient(self, from_number: str, session: dict, doctor, patient_id: str, appt_id: str = ""):
         patient = _get_patient(patient_id)
         if not patient:
             self.sender.send_message(from_number, "❌ Could not fetch patient details. Type *menu* to go back.")
             return
         session["selected_patient_id"] = patient_id
+        session["selected_appt_id"] = appt_id
         session["selected_patient_name"] = patient.get("name", "Patient")
         session["flow"] = "PATIENT_MENU"
 
@@ -645,6 +699,55 @@ class DoctorAgent:
         self.sender.send_interactive_message(from_number, _patient_action_payload(patient_name))
 
     # ── Mark appointment status ──────────────────────────────────
+
+    def _cancel_appointment(self, from_number: str, session: dict, doctor):
+        appt_id = session.get("selected_appt_id")
+        patient_id = session.get("selected_patient_id")
+        patient_name = session.get("selected_patient_name", "Patient")
+
+        if not appt_id:
+            self.sender.send_message(from_number, "⚠️ No active appointment found to cancel. (Make sure you selected them from Today's Patients).")
+            return
+
+        try:
+            # 1. Update DB
+            db.table("appointments").update({"status": "cancelled"}).eq("id", appt_id).execute()
+            self.sender.send_message(from_number, f"✅ Appointment for {patient_name} has been cancelled.")
+
+            # 2. Notify Patient & Family Member
+            from app.services.patient_service import PatientService
+            patient_obj = PatientService.get_patient(self.tenant_id, patient_id)
+            if patient_obj:
+                pat_phone = patient_obj.mobile_number
+                ec_phone = patient_obj.emergency_contact
+                
+                # Fetch appt details for context
+                appt_res = db.table("appointments").select("*").eq("id", appt_id).execute()
+                appt_date = ""
+                appt_time = ""
+                if appt_res.data:
+                    appt_date = appt_res.data[0].get("appointment_date", "")
+                    appt_time = appt_res.data[0].get("appointment_time", "")[:5]
+
+                msg = (
+                    f"⚠️ *Appointment Cancellation*\n\n"
+                    f"Hi, this is to inform you that your appointment with *Dr. {doctor.name}* "
+                    f"on {appt_date} at {appt_time} has been *cancelled* by the doctor.\n\n"
+                    "Please contact the clinic to reschedule."
+                )
+
+                if pat_phone:
+                    pat_clean = "".join(c for c in pat_phone if c.isdigit())
+                    self.sender.send_message(pat_clean, msg)
+
+                if ec_phone:
+                    ec_clean = "".join(c for c in ec_phone if c.isdigit())
+                    if ec_clean and len(ec_clean) >= 10:
+                        self.sender.send_message(ec_clean, msg)
+
+        except Exception as e:
+            logger.error(f"[DoctorAgent] Failed to cancel appointment: {e}")
+            self.sender.send_message(from_number, "❌ Failed to cancel appointment due to an error.")
 
     def _mark_appointment(self, from_number: str, session: dict, doctor, status: str):
         patient_id = session.get("selected_patient_id")
