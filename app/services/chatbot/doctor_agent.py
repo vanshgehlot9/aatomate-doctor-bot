@@ -745,6 +745,40 @@ class DoctorAgent:
                         f"Medicines: {len(medicines)}\n"
                         f"Status: Needs Verification\n\n"
                         "The prescription is now in the system for verification.")
+                        
+                    # --- Notify Patient & Family Member ---
+                    try:
+                        from app.services.patient_service import PatientService
+                        patient_obj = PatientService.get_patient(self.tenant_id, patient_id)
+                        if patient_obj:
+                            med_list_str = "\n".join([f"• {m.get('name')} ({m.get('dose')}, {m.get('frequency')})" for m in medicines])
+                            
+                            # 1. Notify Patient
+                            pat_phone = patient_obj.mobile_number
+                            if pat_phone:
+                                pat_clean = "".join(c for c in pat_phone if c.isdigit())
+                                pat_msg = (
+                                    f"📋 *New Prescription from Dr. {doctor.name}*\n\n"
+                                    f"Hi {patient_obj.name}, a new prescription has been added to your record:\n\n"
+                                    f"*Medicines:*\n{med_list_str}\n\n"
+                                    "_You will start receiving daily reminders for these medicines._"
+                                )
+                                self.sender.send_message(pat_clean, pat_msg)
+                                
+                            # 2. Notify Family Member
+                            ec_phone = patient_obj.emergency_contact
+                            if ec_phone:
+                                ec_clean = "".join(c for c in ec_phone if c.isdigit())
+                                if ec_clean and len(ec_clean) >= 10:
+                                    fam_msg = (
+                                        f"👨‍👩‍👧 *Family Notification — Aatomate Health*\n\n"
+                                        f"Dr. {doctor.name} has just prescribed new medicines for *{patient_obj.name}*:\n\n"
+                                        f"{med_list_str}\n\n"
+                                        f"Please ensure they take their medicines on time! 🙏"
+                                    )
+                                    self.sender.send_message(ec_clean, fam_msg)
+                    except Exception as e:
+                        logger.error(f"[DoctorAgent] Failed to notify patient/family of new prescription: {e}")
                 else:
                     self.sender.send_message(from_number,
                         "⚠️ Failed to save prescription. Please try again from the patient menu.")
