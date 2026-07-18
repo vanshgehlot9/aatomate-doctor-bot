@@ -944,7 +944,8 @@ class PatientAgent:
                                     try:
                                         from app.db.supabase import db
                                         from app.services.patient_service import PatientService
-                                        patient = PatientService.get_patient_by_phone(settings.DEFAULT_TENANT_ID, from_number)
+                                        patients = PatientService.get_patients_by_phone(settings.DEFAULT_TENANT_ID, from_number)
+                                        patient = patients[0] if patients else None
                                         if patient:
                                             meta = patient.insurance_details or {}
                                             meta["water_interval"] = val
