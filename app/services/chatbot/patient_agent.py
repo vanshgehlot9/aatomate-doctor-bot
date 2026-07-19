@@ -944,12 +944,13 @@ class PatientAgent:
                                     try:
                                         from app.db.supabase import db
                                         from app.services.patient_service import PatientService
-                                        patients = PatientService.get_patients_by_phone(settings.DEFAULT_TENANT_ID, from_number)
-                                        patient = patients[0] if patients else None
-                                        if patient:
-                                            meta = patient.insurance_details or {}
-                                            meta["water_interval"] = val
-                                            db.table("patients").update({"insurance_details": meta}).eq("id", patient.id).execute()
+                                        patients = PatientService.get_all_patients_by_phone(from_number)
+                                        
+                                        if patients:
+                                            for patient in patients:
+                                                meta = patient.insurance_details or {}
+                                                meta["water_interval"] = val
+                                                db.table("patients").update({"insurance_details": meta}).eq("id", patient.id).execute()
                                             self.send_whatsapp_message(from_number, msg, phone_number_id)
                                         else:
                                             self.send_whatsapp_message(from_number, "Please register first.", phone_number_id)

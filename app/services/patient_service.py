@@ -63,3 +63,25 @@ class PatientService:
             if row_phone == clean or row_phone.endswith(last10):
                 matches.append(PatientInDB(**row))
         return matches
+
+    @staticmethod
+    def get_all_patients_by_phone(mobile_number: str) -> List[PatientInDB]:
+        """Find all patients registered under a given phone number across ALL tenants."""
+        if not db: return []
+        
+        clean = mobile_number.replace("+", "").replace(" ", "").replace("-", "")
+        
+        # We fetch all patients and filter. In a real large app, we'd do a better query.
+        response = with_retry(
+            lambda: db.table("patients").select("*").execute()
+        )()
+        if not response.data:
+            return []
+            
+        matches = []
+        last10 = clean[-10:] if len(clean) >= 10 else clean
+        for row in response.data:
+            row_phone = (row.get("mobile_number") or "").replace("+", "").replace(" ", "").replace("-", "")
+            if row_phone == clean or row_phone.endswith(last10):
+                matches.append(PatientInDB(**row))
+        return matches
